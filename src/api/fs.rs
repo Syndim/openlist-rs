@@ -220,7 +220,7 @@ impl FsApi<'_> {
             .http
             .put(self.client.url("/api/fs/put"))
             .headers(self.client.auth_headers())
-            .header("path", path)
+            .header("File-Path", path)
             .body(body);
         if let Some(t) = as_task {
             req = req.header("As-Task", t.to_string());
