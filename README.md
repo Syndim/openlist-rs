@@ -1,0 +1,423 @@
+# OpenList Rust SDK
+
+A typed, async Rust client for the [OpenList](https://github.com/OpenListTeam/OpenList) API, plus a command-line interface built on the same library.
+
+[![Release](https://github.com/Syndim/openlist-rs/actions/workflows/release.yml/badge.svg)](https://github.com/Syndim/openlist-rs/actions/workflows/release.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
+
+The repository, [Syndim/openlist-rs](https://github.com/Syndim/openlist-rs), is a Cargo workspace with two crates:
+
+| Crate | Kind | Description |
+| --- | --- | --- |
+| [`openlist`](crates/openlist) | library | Async, typed SDK for the OpenList HTTP API |
+| [`openlist-cli`](crates/openlist-cli) | binary (`openlist`) | Human-friendly CLI and JSON output for the SDK |
+
+---
+
+## Table of contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Workspace layout](#workspace-layout)
+- [CLI](#cli)
+  - [Install](#install)
+  - [Quick start](#quick-start)
+  - [Global options](#global-options)
+  - [Commands](#commands)
+  - [Examples](#examples)
+  - [Credentials and configuration](#credentials-and-configuration)
+  - [JSON output](#json-output)
+- [Library](#library)
+  - [Add the dependency](#add-the-dependency)
+  - [Library quick start](#library-quick-start)
+  - [Error handling](#error-handling)
+  - [API coverage](#api-coverage)
+- [Development](#development)
+- [Release process](#release-process)
+- [License](#license)
+
+---
+
+## Features
+
+- Typed request and response models for the OpenList API
+- Async/await API built on `reqwest` + `tokio`
+- HTTPS through rustls; no OpenSSL required
+- Authentication: password, password hash, LDAP, 2FA, SSO and WebAuthn endpoints
+- Filesystem operations: list, stat, search, mkdir, rename, batch/regex rename, move, copy, remove, upload, offline download and archive inspection
+- Administration: users, storage mounts, drivers, settings, metadata, index and scan
+- Share-link management: create, update, enable/disable and delete
+- CLI output as aligned tables or raw JSON (`--json`)
+- Local credential storage with `0600` permissions on Unix
+
+## Requirements
+
+- Rust **1.85** or newer (the workspace uses edition 2024)
+- A running and reachable OpenList server
+- For library users: a Tokio runtime (the crate uses `tokio` internally)
+
+## Workspace layout
+
+```text
+.
+├── Cargo.toml                  # virtual workspace manifest
+├── Cargo.lock
+├── crates/
+│   ├── openlist/               # library crate
+│   │   ├── src/
+│   │   └── tests/              # mockito-backed integration tests
+│   └── openlist-cli/           # binary crate
+│       └── src/
+└── .github/workflows/
+    └── release.yml             # tag-driven release pipeline
+```
+
+---
+
+## CLI
+
+The binary is named `openlist`.
+
+### Install
+
+Prebuilt binaries for Linux, macOS and Windows are attached to each [release](https://github.com/Syndim/openlist-rs/releases). Install directly from GitHub with Cargo:
+
+```bash
+cargo install --git https://github.com/Syndim/openlist-rs.git --locked openlist-cli
+```
+
+Or from a checkout:
+
+```bash
+git clone https://github.com/Syndim/openlist-rs.git
+cd openlist-rs
+cargo install --path crates/openlist-cli --locked
+```
+
+Build without installing:
+
+```bash
+cargo build --release -p openlist-cli
+./target/release/openlist --help
+```
+
+### Quick start
+
+```bash
+# Point the CLI at your server (defaults to http://localhost:5244)
+export OPENLIST_SERVER=http://localhost:5244
+
+# Log in; the resulting token is cached locally
+openlist login -u admin -p 'your-password'
+
+# Check the session and browse files
+openlist me
+openlist ls /
+```
+
+### Global options
+
+Global flags may appear before or after the subcommand.
+
+| Option | Environment variable | Default | Description |
+| --- | --- | --- | --- |
+| `--server <URL>` | `OPENLIST_SERVER` | `http://localhost:5244` | OpenList server base URL |
+| `--token <TOKEN>` | `OPENLIST_TOKEN` | stored token | API token; overrides the cached credential |
+| `--json` | — | off | Print the raw JSON response instead of a table |
+| `-h, --help` | — | — | Show help |
+| `-V, --version` | — | — | Show version |
+
+### Commands
+
+#### Authentication and account
+
+| Command | Description |
+| --- | --- |
+| `openlist login -u <USER> -p <PASSWORD> [--otp-code <CODE>]` | Authenticate and cache the token |
+| `openlist logout` | Invalidate the session and clear the cached token |
+| `openlist me` | Show the current user |
+
+#### Filesystem
+
+| Command | Description |
+| --- | --- |
+| `openlist ls [PATH] [--refresh] [--page N] [--per-page N]` | List a directory (defaults to `/`) |
+| `openlist stat <PATH>` | Show metadata for one entry |
+| `openlist search <PARENT> <KEYWORDS> [--scope N]` | Search below a parent path |
+| `openlist mkdir <PATH>` | Create a directory |
+| `openlist rename <PATH> <NEW_NAME>` | Rename an entry in place |
+| `openlist mv <SRC_DIR> <DST_DIR> <NAMES>...` | Move entries |
+| `openlist cp <SRC_DIR> <DST_DIR> <NAMES>...` | Copy entries |
+| `openlist rm <DIR> <NAMES>... [-y]` | Remove entries; prompts unless `-y/--yes` |
+| `openlist upload <LOCAL> <REMOTE_DIR> [--name <NAME>]` | Upload one local file |
+
+#### Share links
+
+| Command | Description |
+| --- | --- |
+| `openlist share list [--page N] [--per-page N]` | List share links |
+| `openlist share get <ID>` | Show one share link |
+| `openlist share create <PATHS>... [--password P] [--expiration E]` | Create a share link (`0` expiration means never) |
+| `openlist share update <ID> [--path P] [--password P] [--expiration E] [--disable BOOL]` | Update a share link |
+| `openlist share delete <ID>` | Delete a share link |
+| `openlist share enable <ID>` | Enable a share link |
+| `openlist share disable <ID>` | Disable a share link |
+
+#### Administration
+
+| Command | Description |
+| --- | --- |
+| `openlist admin users list [--page N] [--per-page N]` | List users |
+| `openlist admin users get <ID>` | Show a user |
+| `openlist admin users create <USERNAME> -p <PASSWORD> [--base-path P] [--role N] [--permission N] [--disabled]` | Create a user |
+| `openlist admin users delete <ID>` | Delete a user |
+| `openlist admin storages list [--page N] [--per-page N]` | List storage mounts |
+| `openlist admin storages get <ID>` | Show a storage mount |
+| `openlist admin storages enable <ID>` | Enable a storage mount |
+| `openlist admin storages disable <ID>` | Disable a storage mount |
+
+### Examples
+
+```bash
+# Authenticate against a specific server
+openlist --server http://nas.local:5244 login -u admin -p 's3cret'
+
+# Browse
+openlist ls /
+openlist ls /media --json
+openlist stat /media/movie.mkv
+
+# Search
+openlist search /backups report
+
+# Organise files
+openlist mkdir /archive
+openlist mv /downloads /archive movie.mkv
+openlist cp /archive /backup movie.mkv
+openlist rm /archive movie.mkv -y
+
+# Upload
+openlist upload ./report.pdf /docs --name report-2026.pdf
+
+# Share links
+openlist share create /docs/report-2026.pdf --password hntr2 --expiration 0
+openlist share list
+openlist share disable <share-id>
+
+# Administration
+openlist admin users list --per-page 25
+openlist admin storages list
+openlist admin storages disable 3
+```
+
+### Credentials and configuration
+
+`login` stores the server URL and token in a per-user configuration file:
+
+| Platform | Path |
+| --- | --- |
+| Linux | `$XDG_CONFIG_HOME/openlist-cli/config.json` (usually `~/.config/openlist-cli/config.json`) |
+| macOS | `~/Library/Application Support/openlist-cli/config.json` |
+| Windows | `%APPDATA%\openlist-cli\config.json` |
+
+Resolution order:
+
+1. `--server` / `OPENLIST_SERVER`
+2. Server saved by a previous `login`
+3. `http://localhost:5244`
+
+The token resolves in this order:
+
+1. `--token` / `OPENLIST_TOKEN`
+2. Token saved by a previous `login`
+
+On Unix the configuration file is written with mode `0600`. For automation, prefer `OPENLIST_TOKEN` over passing credentials on the command line.
+
+### JSON output
+
+Pass `--json` (globally or after the subcommand) to print the API envelope:
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "content": [],
+    "total": 0
+  }
+}
+```
+
+This is useful for scripting with `jq`:
+
+```bash
+openlist ls /docs --json | jq -r '.data.content[].name'
+```
+
+---
+
+## Library
+
+### Add the dependency
+
+From this workspace:
+
+```toml
+[dependencies]
+openlist = { path = "crates/openlist" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+```
+
+From another repository, use a path or Git dependency:
+
+```toml
+[dependencies]
+# openlist = { path = "../openlist/crates/openlist" }
+openlist = { git = "https://github.com/Syndim/openlist-rs.git" }
+```
+
+### Library quick start
+
+```rust
+use openlist::models::{FsListRequest, LoginRequest};
+use openlist::OpenListClient;
+
+#[tokio::main]
+async fn main() -> openlist::Result<()> {
+    let mut client = OpenListClient::new("http://localhost:5244");
+
+    // Password login. Use login_hash / login_ldap for other flows.
+    let login = client
+        .auth()
+        .login(&LoginRequest {
+            username: "admin".into(),
+            password: "password".into(),
+            otp_code: None,
+        })
+        .await?;
+
+    if let Some(data) = login.data {
+        client.set_token(data.token);
+    }
+
+    let listing = client
+        .fs()
+        .list(&FsListRequest {
+            path: Some("/".into()),
+            password: None,
+            refresh: None,
+            page: None,
+            per_page: None,
+        })
+        .await?;
+
+    if let Some(data) = listing.data {
+        for entry in data.content.unwrap_or_default() {
+            let kind = if entry.is_dir.unwrap_or(false) { "dir " } else { "file" };
+            println!("{kind} {}", entry.name.unwrap_or_default());
+        }
+    }
+
+    Ok(())
+}
+```
+
+If you already have a token, skip the login call:
+
+```rust
+use openlist::OpenListClient;
+
+let client = OpenListClient::new("http://localhost:5244")
+    .with_token(std::env::var("OPENLIST_TOKEN").unwrap());
+
+let resp = client.user().me().await?;
+println!("{resp:?}");
+```
+
+Every API group is reached from the client:
+
+| Accessor | Covers |
+| --- | --- |
+| `client.auth()` | Login (password, hash, LDAP), logout, 2FA, SSO and WebAuthn |
+| `client.user()` | Current user, password update, SSH keys |
+| `client.fs()` | Listing, stat, search, directories, rename, move/copy, remove, upload, offline download, archives |
+| `client.admin()` | Users, storage mounts, drivers, settings, metadata, index and scan |
+| `client.public()` | Public settings, offline-download tools, archive extensions |
+| `client.sharing()` | Share-link CRUD and enable/disable |
+
+### Error handling
+
+All methods return `openlist::Result<T>`, where `openlist::OpenListError` distinguishes transport, API and serialization failures:
+
+```rust
+use openlist::OpenListError;
+
+match client.user().me().await {
+    Ok(resp) => println!("{resp:?}"),
+    Err(OpenListError::Api { code, message }) => {
+        eprintln!("OpenList rejected the request ({code}): {message}");
+    }
+    Err(err) => eprintln!("request failed: {err}"),
+}
+```
+
+### API coverage
+
+- **Auth**: `login`, `login_hash`, `login_ldap`, `logout`, `generate_2fa`, `verify_2fa`, `sso_login_redirect`, `sso_callback`, WebAuthn login/registration/credentials
+- **User**: `me`, `update_me`, `list_ssh_keys`, `add_ssh_key`, `delete_ssh_key`
+- **Filesystem**: `list`, `get`, `search`, `dirs`, `other`, `mkdir`, `rename`, `batch_rename`, `regex_rename`, `move_files`, `recursive_move`, `copy`, `remove`, `remove_empty_directory`, `put`, `form_upload`, `add_offline_download`, `archive_decompress`, `archive_meta`, `archive_list`
+- **Admin**: user CRUD, 2FA cancellation, user cache and SSH keys; storage CRUD, enable/disable and reload; drivers; settings; metadata; index build/update/stop/clear/progress; scan start/stop/progress
+- **Public**: `settings`, `offline_download_tools`, `archive_extensions`
+- **Sharing**: `list`, `get`, `create`, `update`, `delete`, `enable`, `disable`
+
+---
+
+## Development
+
+```bash
+# Build everything
+cargo build --workspace
+
+# Run the whole test suite (mock server, no OpenList instance required)
+cargo test --workspace
+
+# Library tests only
+cargo test -p openlist
+
+# Exercise the CLI
+cargo run -p openlist-cli -- --help
+
+# Formatting and lints
+cargo fmt --all
+cargo clippy --workspace --all-targets
+```
+
+The integration tests under `crates/openlist/tests` use [`mockito`](https://docs.rs/mockito) and run entirely offline.
+
+## Release process
+
+Pushing a tag that matches `v*` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml):
+
+1. Verifies that the tag equals `[workspace.package] version` without the leading `v`
+2. Runs `cargo test --workspace --locked`
+3. Builds `openlist` for:
+   - Linux x86_64 and aarch64, both glibc and musl
+   - macOS Intel and Apple Silicon
+   - Windows x86_64
+4. Publishes a GitHub Release with `openlist-<tag>-<target>.tar.gz` / `.zip` archives and a `SHA256SUMS` file
+
+Download the latest binaries from the [Releases](https://github.com/Syndim/openlist-rs/releases) page.
+
+```bash
+# Bump [workspace.package] version first, then:
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Tags containing a hyphen (for example `v0.2.0-rc.1`) are published as pre-releases.
+
+## License
+
+Licensed under the [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html) (AGPL-3.0).
+
+Source code: <https://github.com/Syndim/openlist-rs>
