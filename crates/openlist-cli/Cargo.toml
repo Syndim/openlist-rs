@@ -1,0 +1,19 @@
+[package]
+name = "openlist-cli"
+version.workspace = true
+edition.workspace = true
+description = "Command-line interface for the OpenList API"
+license.workspace = true
+
+[[bin]]
+name = "openlist"
+path = "src/main.rs"
+
+[dependencies]
+openlist = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+dirs = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }

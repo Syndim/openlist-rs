@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 // ── Generic API envelope ─────────────────────────────────────────────
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiResponse<T = serde_json::Value> {
     pub code: i32,
     pub message: String,
@@ -21,7 +21,7 @@ pub struct PageReq {
     pub per_page: Option<i64>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListData<T> {
     pub content: Option<Vec<T>>,
     pub total: Option<i64>,
@@ -37,7 +37,7 @@ pub struct LoginRequest {
     pub otp_code: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoginData {
     pub token: String,
 }
@@ -65,7 +65,7 @@ pub struct Verify2FARequest {
     pub secret: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Generate2FAData {
     pub secret: Option<String>,
     pub qr: Option<String>,
@@ -202,7 +202,7 @@ pub struct FsListRequest {
     pub per_page: Option<i64>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FsListData {
     pub content: Option<Vec<FsObject>>,
     pub total: Option<i64>,
@@ -289,7 +289,7 @@ pub struct FsDirsRequest {
     pub force_root: Option<bool>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DirEntry {
     pub name: Option<String>,
     pub path: Option<String>,
@@ -382,7 +382,7 @@ pub struct Storage {
 
 // ── Driver ───────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriverInfo {
     pub name: Option<String>,
     pub config: Option<serde_json::Value>,
@@ -474,7 +474,7 @@ pub struct CreateSharingRequest {
     pub expiration: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSharingData {
     pub id: Option<String>,
     pub url: Option<String>,
@@ -487,7 +487,7 @@ pub struct UpdateIndexRequest {
     pub paths: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexProgress {
     pub done: Option<bool>,
     pub total: Option<i64>,
