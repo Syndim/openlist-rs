@@ -1,0 +1,155 @@
+name: Release
+
+# Pushing a tag such as v0.1.0 builds the CLI for every supported platform and
+# publishes a GitHub Release containing the archives and checksums.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  BIN_NAME: openlist
+
+jobs:
+  verify-version:
+    name: Verify tag matches crate version
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare tag with workspace version
+        run: |
+          set -euo pipefail
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "openlist-cli") | .version')
+          tag="${GITHUB_REF_NAME#v}"
+          echo "tag: ${GITHUB_REF_NAME} (${tag}), openlist-cli version: ${version}"
+          if [ "${version}" != "${tag}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match openlist-cli version ${version}. Bump [workspace.package] version before tagging."
+            exit 1
+          fi
+
+  test:
+    name: Test workspace
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --locked
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: [verify-version, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Native runners are used for every target, avoiding cross-compilation
+          # of native dependencies (aws-lc-sys from rustls).
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-22.04
+            musl: true
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-22.04-arm
+            musl: true
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+          - target: aarch64-apple-darwin
+            os: macos-15
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install musl toolchain
+        if: matrix.musl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools musl-dev
+          echo "CC=musl-gcc" >> "${GITHUB_ENV}"
+          target_var=$(echo "${{ matrix.target }}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+          echo "CARGO_TARGET_${target_var}_LINKER=musl-gcc" >> "${GITHUB_ENV}"
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }} -p openlist-cli
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          archive="${BIN_NAME}-${GITHUB_REF_NAME}-${TARGET}.tar.gz"
+          tar -czf "dist/${archive}" -C "target/${TARGET}/release" "${BIN_NAME}"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "target/$env:TARGET/release/$env:BIN_NAME.exe" `
+            -DestinationPath "dist/$env:BIN_NAME-$env:GITHUB_REF_NAME-$env:TARGET.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.BIN_NAME }}-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ env.BIN_NAME }}-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' \
+            | sort -z \
+            | xargs -0 sha256sum > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
