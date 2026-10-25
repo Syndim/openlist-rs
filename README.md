@@ -513,11 +513,11 @@ Download the latest binaries from the [Releases](https://github.com/Syndim/openl
 
 ```bash
 # Bump [workspace.package] version first, then:
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
-Tags containing a hyphen (for example `v0.3.0-rc.1`) are published as pre-releases.
+Tags containing a hyphen (for example `v0.4.0-rc.1`) are published as pre-releases.
 
 ## License
 
