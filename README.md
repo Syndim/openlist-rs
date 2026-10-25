@@ -521,11 +521,18 @@ Step 5 needs a crates.io API token with `publish-new` and `publish-update` scope
 Download the latest binaries from the [Releases](https://github.com/Syndim/openlist-rs/releases) page.
 
 ```bash
-# Bump [workspace.package] version and the openlist version in
-# [workspace.dependencies] first, then:
-git tag v0.4.0
-git push origin v0.4.0
+# Bumps [workspace.package] version, the openlist requirement in
+# [workspace.dependencies] and Cargo.lock, then commits, tags v<version>
+# and pushes the branch and the tag (patch bump by default):
+just bump-version
+
+# Explicit version, skip the push, or push to another remote:
+just bump-version 0.5.0
+just bump-version "" false
+just bump-version "" true github
 ```
+
+The recipe stops when the version is not `MAJOR.MINOR.PATCH`, when `v<version>` already exists, when tracked files have uncommitted changes, or when `Cargo.toml` does not contain exactly the two version fields — so a tag can never point at a half-applied bump or sweep in unrelated edits. Push the tag to the remote that runs the GitHub workflow.
 
 Tags containing a hyphen (for example `v0.4.0-rc.1`) are published as pre-releases.
 
