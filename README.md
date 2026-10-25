@@ -2,6 +2,12 @@
 
 A typed, async Rust client for the [OpenList](https://github.com/OpenListTeam/OpenList) API, plus a command-line interface built on the same library.
 
+> **Unofficial client.** This project is an independent, community-maintained
+> client and is not affiliated with, endorsed by, or supported by the
+> [OpenList](https://github.com/OpenListTeam/OpenList) project. It only talks to
+> an OpenList server over its HTTP API. Please report bugs in this SDK or CLI
+> here, and problems with the server itself upstream.
+
 [![Release](https://github.com/Syndim/openlist-rs/actions/workflows/release.yml/badge.svg)](https://github.com/Syndim/openlist-rs/actions/workflows/release.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
 
@@ -508,11 +514,15 @@ Pushing a tag that matches `v*` triggers [`.github/workflows/release.yml`](.gith
    - macOS Intel and Apple Silicon
    - Windows x86_64
 4. Publishes a GitHub Release with `openlist-<tag>-<target>.tar.gz` / `.zip` archives and a `SHA256SUMS` file
+5. Publishes `openlist` and then `openlist-cli` to [crates.io](https://crates.io/crates/openlist), waiting for the library to appear in the index before the CLI (which depends on it) is uploaded
+
+Step 5 needs a crates.io API token with `publish-new` and `publish-update` scopes stored as the repository secret `CARGO_REGISTRY_TOKEN`. Crates already published at that version are skipped, so re-running a release that failed halfway is safe.
 
 Download the latest binaries from the [Releases](https://github.com/Syndim/openlist-rs/releases) page.
 
 ```bash
-# Bump [workspace.package] version first, then:
+# Bump [workspace.package] version and the openlist version in
+# [workspace.dependencies] first, then:
 git tag v0.4.0
 git push origin v0.4.0
 ```

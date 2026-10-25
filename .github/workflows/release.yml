@@ -2,7 +2,8 @@ name: Release
 
 # Pushing a tag such as v0.2.0 runs the full test suite (unit + end-to-end) and
 # builds the CLI for every supported platform; only a green run publishes the
-# GitHub Release with the archives and checksums.
+# GitHub Release with the archives and checksums, and publishes both crates to
+# crates.io (openlist first, then openlist-cli, which depends on it).
 on:
   push:
     tags:
@@ -36,6 +37,22 @@ jobs:
           echo "tag: ${GITHUB_REF_NAME} (${tag}), openlist-cli version: ${version}"
           if [ "${version}" != "${tag}" ]; then
             echo "::error::Tag ${GITHUB_REF_NAME} does not match openlist-cli version ${version}. Bump [workspace.package] version before tagging."
+            exit 1
+          fi
+
+      # openlist-cli publishes against the openlist crate from crates.io, so the
+      # version requirement in [workspace.dependencies] has to be bumped in the
+      # same commit as [workspace.package] version.
+      - name: Compare openlist dependency requirement with version
+        run: |
+          set -euo pipefail
+          metadata=$(cargo metadata --no-deps --format-version 1)
+          version=$(jq -r '.packages[] | select(.name == "openlist") | .version' <<<"${metadata}")
+          req=$(jq -r '.packages[] | select(.name == "openlist-cli")
+            | .dependencies[] | select(.name == "openlist") | .req' <<<"${metadata}")
+          echo "openlist version: ${version}, openlist-cli requires: ${req}"
+          if [ "${req#^}" != "${version}" ]; then
+            echo "::error::openlist-cli requires openlist ${req} but the workspace version is ${version}. Update the version in [workspace.dependencies]."
             exit 1
           fi
 
@@ -122,6 +139,89 @@ jobs:
           path: dist/*
           if-no-files-found: error
           retention-days: 7
+
+  publish-crates:
+    name: Publish to crates.io
+    # Gated on `build` so a version is only uploaded once the binaries compile
+    # for every platform: a published version can be yanked but never deleted.
+    # Each crate is skipped when that exact version is already on crates.io, so
+    # re-running a release that failed halfway is safe.
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      # crates.io API token (publish scope, including new crates).
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      USER_AGENT: openlist-rs release workflow (https://github.com/Syndim/openlist-rs)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check crates.io token is configured
+        run: |
+          set -euo pipefail
+          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN is empty. Add a crates.io API token with publish scope as a repository secret named CARGO_REGISTRY_TOKEN."
+            exit 1
+          fi
+
+      - name: Publish crates
+        run: |
+          set -euo pipefail
+
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "openlist") | .version')
+          echo "Publishing version ${version}"
+
+          # Path crates.io uses for a crate in the sparse index.
+          index_path() {
+            local name="$1"
+            case "${#name}" in
+              1) echo "1/${name}" ;;
+              2) echo "2/${name}" ;;
+              3) echo "3/${name:0:1}/${name}" ;;
+              *) echo "${name:0:2}/${name:2:2}/${name}" ;;
+            esac
+          }
+
+          already_published() {
+            local code
+            code=$(curl -sS --retry 3 -o /dev/null -w '%{http_code}' \
+              -H "User-Agent: ${USER_AGENT}" \
+              "https://crates.io/api/v1/crates/$1/$2")
+            [ "${code}" = "200" ]
+          }
+
+          # cargo publish for openlist-cli resolves openlist from the registry, so
+          # the new version has to be visible in the index first.
+          wait_for_index() {
+            local url
+            url="https://index.crates.io/$(index_path "$1")"
+            for _ in $(seq 1 60); do
+              if curl -sf -H "User-Agent: ${USER_AGENT}" "${url}" \
+                | jq -s -e --arg v "${version}" 'any(.[]; .vers == $v)' >/dev/null 2>&1; then
+                echo "$1 ${version} is in the index"
+                return 0
+              fi
+              sleep 5
+            done
+            echo "::error::$1 ${version} did not reach the crates.io index" >&2
+            return 1
+          }
+
+          for crate in openlist openlist-cli; do
+            if already_published "${crate}" "${version}"; then
+              echo "::notice::${crate} ${version} is already on crates.io, skipping"
+              continue
+            fi
+            if [ "${crate}" != "openlist" ]; then
+              wait_for_index openlist
+            fi
+            cargo publish --locked -p "${crate}"
+          done
 
   release:
     name: Publish GitHub release

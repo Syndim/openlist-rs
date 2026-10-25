@@ -5,6 +5,7 @@ edition.workspace = true
 description = "Command-line interface for the OpenList API"
 license.workspace = true
 repository.workspace = true
+readme = "../../README.md"
 
 [[bin]]
 name = "openlist"
