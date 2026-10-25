@@ -1,0 +1,32 @@
+version: 2
+
+# Dependency updates for the Cargo workspace and the workflows in this folder.
+# NOTE: the canonical repository is Azure DevOps; GitHub is a mirror. Dependabot
+# opens PRs on GitHub only, so merged update commits must be brought back into
+# the Azure DevOps repo (e.g. `git pull https://github.com/Syndim/openlist-rs <sha>`)
+# instead of being merged twice.
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      cargo-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
