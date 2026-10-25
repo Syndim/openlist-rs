@@ -557,3 +557,54 @@ pub struct IndexProgress {
 pub struct IdRequest {
     pub id: i64,
 }
+
+// ── Tasks ────────────────────────────────────────────────────────────
+
+/// One entry of `/api/task/<kind>/undone` or `/api/task/<kind>/done`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskInfo {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub creator: Option<String>,
+    #[serde(default)]
+    pub creator_role: i32,
+    /// 0=pending, 1=running, 2=succeeded, 3=canceling, 4=canceled,
+    /// 5=errored, 6=failing, 7=failed, 8=waiting retry, 9=before retry
+    #[serde(default)]
+    pub state: i32,
+    pub status: Option<String>,
+    #[serde(default)]
+    pub progress: f64,
+    pub start_time: Option<String>,
+    pub end_time: Option<String>,
+    #[serde(default)]
+    pub total_bytes: i64,
+    pub error: Option<String>,
+}
+
+impl TaskInfo {
+    /// The task manager will not change this task again.
+    pub fn is_terminal(&self) -> bool {
+        matches!(self.state, 2 | 4 | 7)
+    }
+
+    pub fn is_success(&self) -> bool {
+        self.state == 2
+    }
+
+    pub fn state_name(&self) -> &'static str {
+        match self.state {
+            0 => "pending",
+            1 => "running",
+            2 => "succeeded",
+            3 => "canceling",
+            4 => "canceled",
+            5 => "errored",
+            6 => "failing",
+            7 => "failed",
+            8 => "waiting-retry",
+            9 => "before-retry",
+            _ => "unknown",
+        }
+    }
+}

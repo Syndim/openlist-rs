@@ -1,7 +1,8 @@
 use bytes::Bytes;
+use reqwest::header::CONTENT_TYPE;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use crate::client::{OpenListClient, RequestBuilderExt};
+use crate::client::{OpenListClient, RequestBuilderExt, encode_path};
 use crate::error::{OpenListError, Result};
 use crate::models::*;
 
@@ -298,7 +299,12 @@ impl FsApi<'_> {
             .http
             .put(self.client.url("/api/fs/put"))
             .headers(self.client.auth_headers())
-            .header("File-Path", path)
+            // OpenList decodes this header with url.PathUnescape, so the path
+            // must be encoded: otherwise names containing a space, `%` or a
+            // non-ASCII character are rejected or mangled.
+            .header("File-Path", encode_path(path))
+            .header(CONTENT_TYPE, "application/octet-stream")
+            .header("Overwrite", "true")
             .body(body);
         if let Some(t) = as_task {
             req = req.header("As-Task", t.to_string());
@@ -324,7 +330,11 @@ impl FsApi<'_> {
             .http
             .put(self.client.url("/api/fs/form"))
             .headers(self.client.auth_headers())
-            .header("path", path)
+            // Both upload endpoints read the target from `File-Path`; `path`
+            // is silently ignored and the request fails with
+            // "storage not found".
+            .header("File-Path", encode_path(path))
+            .header("Overwrite", "true")
             .multipart(form)
             .send_with(self.client)
             .await?;

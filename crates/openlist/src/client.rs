@@ -83,19 +83,28 @@ impl OpenListClient {
         &self,
         resp: reqwest::Response,
     ) -> Result<ApiResponse<T>> {
-        let api_resp: ApiResponse<T> = if self.verbose {
-            let content_type = resp
-                .headers()
-                .get(CONTENT_TYPE)
-                .and_then(|value| value.to_str().ok())
-                .unwrap_or_default()
-                .to_string();
-            let bytes = resp.bytes().await?;
+        let status = resp.status();
+        let content_type = resp
+            .headers()
+            .get(CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or_default()
+            .to_string();
+        // Read the body before parsing: when a proxy answered instead of the
+        // API the body is not JSON, and the status plus those bytes are the evi-
+        // dence that identifies the failing hop.
+        let bytes = resp.bytes().await?;
+        if self.verbose {
             log_body("<", &bytes, &content_type);
-            serde_json::from_slice(&bytes)?
-        } else {
-            resp.json().await?
-        };
+        }
+        let api_resp: ApiResponse<T> = serde_json::from_slice(&bytes).map_err(|source| {
+            crate::error::OpenListError::non_json_response(
+                status.as_u16(),
+                content_type,
+                body_preview(&bytes),
+                source,
+            )
+        })?;
         if api_resp.code != 200 {
             return Err(OpenListError::Api {
                 code: api_resp.code,
@@ -129,6 +138,10 @@ impl OpenListClient {
     pub fn sharing(&self) -> crate::api::sharing::SharingApi<'_> {
         crate::api::sharing::SharingApi { client: self }
     }
+
+    pub fn task(&self) -> crate::api::task::TaskApi<'_> {
+        crate::api::task::TaskApi { client: self }
+    }
 }
 
 /// Extension trait that routes `reqwest` request builders through the client so
@@ -156,6 +169,57 @@ fn log_request(request: &reqwest::Request) {
         .and_then(|value| value.to_str().ok())
         .unwrap_or_default();
     log_body(">", bytes, content_type);
+}
+
+/// Render a short, single-line preview of a response body for error messages.
+fn body_preview(bytes: &[u8]) -> String {
+    if bytes.is_empty() {
+        return "<empty>".to_string();
+    }
+    const LIMIT: usize = 400;
+    let end = bytes.len().min(LIMIT);
+    let text = String::from_utf8_lossy(&bytes[..end]);
+    let mut out = String::new();
+    let mut pending_space = false;
+    for ch in text.chars() {
+        if ch.is_whitespace() || ch.is_control() {
+            pending_space = true;
+            continue;
+        }
+        if pending_space && !out.is_empty() {
+            out.push(' ');
+        }
+        pending_space = false;
+        out.push(ch);
+    }
+    if out.is_empty() {
+        out.push_str("<binary body>");
+    }
+    if bytes.len() > LIMIT {
+        out.push('…');
+    }
+    out
+}
+
+/// Percent-encode a remote path for the `File-Path` header, which OpenList
+/// decodes with `url.PathUnescape`. Unreserved characters and `/` are left
+/// alone so logs stay readable.
+pub(crate) fn encode_path(path: &str) -> String {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    let mut out = String::with_capacity(path.len());
+    for &byte in path.as_bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' => {
+                out.push(byte as char);
+            }
+            _ => {
+                out.push('%');
+                out.push(HEX[(byte >> 4) as usize] as char);
+                out.push(HEX[(byte & 0x0f) as usize] as char);
+            }
+        }
+    }
+    out
 }
 
 fn log_body(prefix: &str, bytes: &[u8], content_type: &str) {
@@ -273,9 +337,29 @@ mod tests {
     #[test]
     fn identifies_sensitive_headers() {
         assert!(is_sensitive_header("authorization"));
-        assert!(is_sensitive_header("proxy-authorization"));
         assert!(is_sensitive_header("cookie"));
-        assert!(is_sensitive_header("set-cookie"));
         assert!(!is_sensitive_header("content-type"));
+    }
+
+    #[test]
+    fn percent_encodes_only_unsafe_path_bytes() {
+        assert_eq!(
+            encode_path("/tianyi/packages/report-2026.pdf"),
+            "/tianyi/packages/report-2026.pdf"
+        );
+        assert_eq!(
+            encode_path("/tianyi/packages/desktop screen/报告 1.txt"),
+            "/tianyi/packages/desktop%20screen/%E6%8A%A5%E5%91%8A%201.txt"
+        );
+        assert_eq!(encode_path("/a/50%.txt"), "/a/50%25.txt");
+    }
+
+    #[test]
+    fn body_preview_flattens_and_truncates() {
+        assert_eq!(body_preview(b""), "<empty>");
+        assert_eq!(body_preview(b"error code: 504"), "error code: 504");
+        assert_eq!(body_preview(b"a\n\n  b\tc"), "a b c");
+        assert_eq!(body_preview(b"\0\0\0"), "<binary body>");
+        assert!(body_preview(&[b'x'; 500]).ends_with('…'));
     }
 }

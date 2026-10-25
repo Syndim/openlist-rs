@@ -664,6 +664,92 @@ async fn test_fs_put_forbidden() {
     mock.assert_async().await;
 }
 
+#[tokio::test]
+async fn test_fs_put_sends_documented_headers() {
+    let (mut server, client) = common::setup().await;
+    let mock = server
+        .mock("PUT", "/api/fs/put")
+        .match_header("file-path", "/uploads/desktop%20screen%20report%201.txt")
+        .match_header("content-type", "application/octet-stream")
+        .match_header("overwrite", "true")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(common::success_json(serde_json::json!(null)))
+        .create_async()
+        .await;
+
+    let resp = client
+        .fs()
+        .put(
+            "/uploads/desktop screen report 1.txt",
+            bytes::Bytes::from_static(b"data"),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.code, 200);
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn test_fs_put_non_json_response_reports_status_and_body() {
+    let (mut server, client) = common::setup().await;
+    let mock = server
+        .mock("PUT", "/api/fs/put")
+        .with_status(504)
+        .with_header("content-type", "text/plain; charset=UTF-8")
+        .with_header("server", "cloudflare")
+        .with_body("error code: 504")
+        .create_async()
+        .await;
+
+    let err = client
+        .fs()
+        .put(
+            "/uploads/file.txt",
+            bytes::Bytes::from_static(b"data"),
+            None,
+            None,
+        )
+        .await
+        .unwrap_err();
+    let message = err.to_string();
+    assert!(message.contains("HTTP 504"), "{message}");
+    assert!(message.contains("error code: 504"), "{message}");
+    assert!(message.contains("gateway or origin timeout"), "{message}");
+    mock.assert_async().await;
+}
+
+// ── Upload (form) ────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_fs_form_upload_targets_file_path_header() {
+    let (mut server, client) = common::setup().await;
+    let mock = server
+        .mock("PUT", "/api/fs/form")
+        .match_header("file-path", "/uploads/a%20b.bin")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(common::success_json(serde_json::json!(null)))
+        .create_async()
+        .await;
+
+    let resp = client
+        .fs()
+        .form_upload(
+            "/uploads/a b.bin",
+            "a b.bin",
+            bytes::Bytes::from_static(b"data"),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.code, 200);
+    mock.assert_async().await;
+}
+
 // ── Other (provider-specific) ────────────────────────────────────────
 
 #[tokio::test]
