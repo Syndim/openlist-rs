@@ -1,7 +1,8 @@
 use bytes::Bytes;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use crate::client::OpenListClient;
-use crate::error::Result;
+use crate::error::{OpenListError, Result};
 use crate::models::*;
 
 pub struct FsApi<'a> {
@@ -33,6 +34,83 @@ impl FsApi<'_> {
             .send()
             .await?;
         self.client.handle_response(resp).await
+    }
+
+    /// Download a file's raw content into memory.
+    ///
+    /// The server resolves the storage-specific link through `fs/get`; relative
+    /// links are completed against the client base URL and the request carries
+    /// the same authorization headers as the API calls.
+    pub async fn download(&self, req: &FsGetRequest) -> Result<Bytes> {
+        Ok(self.download_response(req).await?.bytes().await?)
+    }
+
+    /// Stream a file's raw content into an async writer, returning the number
+    /// of bytes written.
+    pub async fn download_to<W>(&self, req: &FsGetRequest, writer: &mut W) -> Result<u64>
+    where
+        W: AsyncWrite + Unpin,
+    {
+        let mut resp = self.download_response(req).await?;
+        let mut written = 0u64;
+        while let Some(chunk) = resp.chunk().await? {
+            writer.write_all(&chunk).await?;
+            written += chunk.len() as u64;
+        }
+        writer.flush().await?;
+        Ok(written)
+    }
+
+    async fn download_response(&self, req: &FsGetRequest) -> Result<reqwest::Response> {
+        let resp = self.get(req).await?;
+        let Some(data) = resp.data else {
+            return Err(OpenListError::Api {
+                code: resp.code,
+                message: resp.message,
+            });
+        };
+
+        if data.is_dir.unwrap_or(false) {
+            return Err(OpenListError::Api {
+                code: 400,
+                message: format!("{} is a directory", req.path),
+            });
+        }
+
+        let raw_url =
+            data.raw_url
+                .filter(|url| !url.is_empty())
+                .ok_or_else(|| OpenListError::Api {
+                    code: 404,
+                    message: format!("server returned no download URL for {}", req.path),
+                })?;
+
+        let url = if raw_url.starts_with("http://") || raw_url.starts_with("https://") {
+            raw_url
+        } else if raw_url.starts_with('/') {
+            self.client.url(&raw_url)
+        } else {
+            self.client.url(&format!("/{raw_url}"))
+        };
+
+        let resp = self
+            .client
+            .http
+            .get(url)
+            .headers(self.client.auth_headers())
+            .send()
+            .await?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let message = resp.text().await.unwrap_or_default();
+            return Err(OpenListError::Api {
+                code: status.as_u16() as i32,
+                message,
+            });
+        }
+
+        Ok(resp)
     }
 
     /// Search for files/folders by name (requires search index to be built).

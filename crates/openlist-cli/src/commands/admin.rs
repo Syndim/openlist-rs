@@ -185,6 +185,31 @@ async fn storages(client: &OpenListClient, command: StoragesCommand, json: bool)
             let resp = client.admin().disable_storage(id).await?;
             emit(resp, json)
         }
+        StoragesCommand::StorageCreate {
+            root,
+            mount_path,
+            cache_expiration,
+        } => {
+            let root = std::path::absolute(&root).unwrap_or(root);
+            let storage = Storage {
+                mount_path: Some(mount_path),
+                order: Some(0),
+                driver: Some("Local".into()),
+                cache_expiration: cache_expiration.or(Some(30)),
+                status: Some(String::new()),
+                addition: Some(
+                    serde_json::json!({
+                        "root_folder_path": root,
+                        "thumbnail": false,
+                    })
+                    .to_string(),
+                ),
+                remark: Some("created by openlist-cli".into()),
+                ..Storage::default()
+            };
+            let resp = client.admin().create_storage(&storage).await?;
+            emit(resp, json)
+        }
     }
 }
 

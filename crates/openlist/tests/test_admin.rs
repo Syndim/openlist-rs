@@ -29,7 +29,10 @@ async fn test_admin_list_users_success() {
     let data = resp.data.unwrap();
     assert_eq!(data.total, Some(2));
     assert_eq!(data.content.as_ref().unwrap().len(), 2);
-    assert_eq!(data.content.as_ref().unwrap()[0].username.as_deref(), Some("admin"));
+    assert_eq!(
+        data.content.as_ref().unwrap()[0].username.as_deref(),
+        Some("admin")
+    );
     mock.assert_async().await;
 }
 
@@ -126,7 +129,10 @@ async fn test_admin_create_user_duplicate() {
         .mock("POST", "/api/admin/user/create")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::error_json(400, "Invalid request or username already exists"))
+        .with_body(common::error_json(
+            400,
+            "Invalid request or username already exists",
+        ))
         .create_async()
         .await;
 
@@ -216,6 +222,7 @@ async fn test_admin_delete_user_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/user/delete")
+        .match_query(mockito::Matcher::UrlEncoded("id".into(), "2".into()))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
@@ -232,6 +239,7 @@ async fn test_admin_delete_user_cannot_delete_admin() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/user/delete")
+        .match_query(mockito::Matcher::UrlEncoded("id".into(), "1".into()))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::error_json(400, "Cannot delete admin user"))
@@ -250,6 +258,7 @@ async fn test_admin_cancel_2fa_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/user/cancel_2fa")
+        .match_query(mockito::Matcher::UrlEncoded("id".into(), "2".into()))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
@@ -266,13 +275,17 @@ async fn test_admin_del_user_cache_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/user/del_cache")
+        .match_query(mockito::Matcher::UrlEncoded(
+            "username".into(),
+            "alice".into(),
+        ))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
         .create_async()
         .await;
 
-    let resp = client.admin().del_user_cache(1).await.unwrap();
+    let resp = client.admin().del_user_cache("alice").await.unwrap();
     assert_eq!(resp.code, 200);
     mock.assert_async().await;
 }
@@ -303,6 +316,7 @@ async fn test_admin_delete_user_ssh_key() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/user/sshkey/delete")
+        .match_query(mockito::Matcher::UrlEncoded("id".into(), "1".into()))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
@@ -339,7 +353,10 @@ async fn test_admin_list_storages_success() {
     let resp = client.admin().list_storages(None, None).await.unwrap();
     let data = resp.data.unwrap();
     assert_eq!(data.total, Some(1));
-    assert_eq!(data.content.as_ref().unwrap()[0].driver.as_deref(), Some("Local"));
+    assert_eq!(
+        data.content.as_ref().unwrap()[0].driver.as_deref(),
+        Some("Local")
+    );
     mock.assert_async().await;
 }
 
@@ -419,7 +436,10 @@ async fn test_admin_create_storage_duplicate_mount() {
         .mock("POST", "/api/admin/storage/create")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::error_json(400, "Invalid configuration or mount path already exists"))
+        .with_body(common::error_json(
+            400,
+            "Invalid configuration or mount path already exists",
+        ))
         .create_async()
         .await;
 
@@ -466,6 +486,7 @@ async fn test_admin_delete_storage_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/storage/delete")
+        .match_query(mockito::Matcher::UrlEncoded("id".into(), "1".into()))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
@@ -482,6 +503,7 @@ async fn test_admin_enable_storage() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/storage/enable")
+        .match_query(mockito::Matcher::UrlEncoded("id".into(), "1".into()))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
@@ -498,6 +520,7 @@ async fn test_admin_disable_storage() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/storage/disable")
+        .match_query(mockito::Matcher::UrlEncoded("id".into(), "1".into()))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
@@ -555,7 +578,9 @@ async fn test_admin_list_driver_names() {
         .mock("GET", "/api/admin/driver/names")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::success_json(serde_json::json!(["Local", "S3", "WebDAV", "FTP"])))
+        .with_body(common::success_json(serde_json::json!([
+            "Local", "S3", "WebDAV", "FTP"
+        ])))
         .create_async()
         .await;
 
@@ -571,7 +596,10 @@ async fn test_admin_get_driver_info() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("GET", "/api/admin/driver/info")
-        .match_query(mockito::Matcher::UrlEncoded("driver".into(), "Local".into()))
+        .match_query(mockito::Matcher::UrlEncoded(
+            "driver".into(),
+            "Local".into(),
+        ))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!({
@@ -614,7 +642,10 @@ async fn test_admin_get_setting() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("GET", "/api/admin/setting/get")
-        .match_query(mockito::Matcher::UrlEncoded("key".into(), "site_title".into()))
+        .match_query(mockito::Matcher::UrlEncoded(
+            "key".into(),
+            "site_title".into(),
+        ))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!({
@@ -801,6 +832,7 @@ async fn test_admin_delete_meta() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/admin/meta/delete")
+        .match_query(mockito::Matcher::UrlEncoded("id".into(), "1".into()))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))

@@ -302,9 +302,9 @@ async fn test_sso_login_redirect() {
         .mock("GET", "/api/auth/sso")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::success_json(
-            serde_json::json!("https://sso.example.com/authorize?..."),
-        ))
+        .with_body(common::success_json(serde_json::json!(
+            "https://sso.example.com/authorize?..."
+        )))
         .create_async()
         .await;
 

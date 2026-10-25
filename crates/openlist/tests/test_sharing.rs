@@ -15,9 +15,9 @@ async fn test_sharing_list_success() {
             "content": [
                 {
                     "id": "share-001",
-                    "path": "/shared/docs",
-                    "password": "abc123",
-                    "expiration": "2025-12-31T23:59:59Z",
+                    "files": ["/shared/docs"],
+                    "pwd": "abc123",
+                    "expires": "2025-12-31T23:59:59Z",
                     "created_at": "2025-10-20T10:00:00Z",
                     "disabled": false
                 }
@@ -29,7 +29,10 @@ async fn test_sharing_list_success() {
 
     let resp = client
         .sharing()
-        .list(&PageReq { page: Some(1), per_page: Some(10) })
+        .list(&PageReq {
+            page: Some(1),
+            per_page: Some(10),
+        })
         .await
         .unwrap();
 
@@ -38,7 +41,11 @@ async fn test_sharing_list_success() {
     let shares = data.content.unwrap();
     assert_eq!(shares.len(), 1);
     assert_eq!(shares[0].id.as_deref(), Some("share-001"));
-    assert_eq!(shares[0].path.as_deref(), Some("/shared/docs"));
+    assert_eq!(
+        shares[0].files.as_deref(),
+        Some(["/shared/docs".to_string()].as_slice())
+    );
+    assert_eq!(shares[0].password.as_deref(), Some("abc123"));
     assert_eq!(shares[0].disabled, Some(false));
     mock.assert_async().await;
 }
@@ -56,7 +63,10 @@ async fn test_sharing_list_forbidden() {
 
     let result = client
         .sharing()
-        .list(&PageReq { page: Some(1), per_page: Some(10) })
+        .list(&PageReq {
+            page: Some(1),
+            per_page: Some(10),
+        })
         .await;
 
     assert!(result.is_err());
@@ -70,7 +80,10 @@ async fn test_sharing_get_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("GET", "/api/share/get")
-        .match_query(mockito::Matcher::UrlEncoded("id".into(), "share-001".into()))
+        .match_query(mockito::Matcher::UrlEncoded(
+            "id".into(),
+            "share-001".into(),
+        ))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!({
@@ -95,7 +108,10 @@ async fn test_sharing_get_not_found() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("GET", "/api/share/get")
-        .match_query(mockito::Matcher::UrlEncoded("id".into(), "nonexistent".into()))
+        .match_query(mockito::Matcher::UrlEncoded(
+            "id".into(),
+            "nonexistent".into(),
+        ))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::error_json(404, "Share not found"))
@@ -114,11 +130,18 @@ async fn test_sharing_create_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/share/create")
+        .match_body(mockito::Matcher::Json(serde_json::json!({
+            "files": ["/my/files"],
+            "pwd": "secret",
+            "expires": "2025-12-31T23:59:59Z"
+        })))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!({
             "id": "share-new",
-            "url": "https://example.com/s/share-new"
+            "files": ["/my/files"],
+            "pwd": "secret",
+            "expires": "2025-12-31T23:59:59Z"
         })))
         .create_async()
         .await;
@@ -135,7 +158,10 @@ async fn test_sharing_create_success() {
 
     let data = resp.data.unwrap();
     assert_eq!(data.id.as_deref(), Some("share-new"));
-    assert_eq!(data.url.as_deref(), Some("https://example.com/s/share-new"));
+    assert_eq!(
+        data.files.as_deref(),
+        Some(["/my/files".to_string()].as_slice())
+    );
     mock.assert_async().await;
 }
 
@@ -170,27 +196,36 @@ async fn test_sharing_update_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/share/update")
+        .match_body(mockito::Matcher::Json(serde_json::json!({
+            "id": "share-001",
+            "files": ["/shared/docs"],
+            "pwd": "newpass",
+            "disabled": true
+        })))
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::success_json(serde_json::json!(null)))
+        .with_body(common::success_json(serde_json::json!({
+            "id": "share-001",
+            "files": ["/shared/docs"],
+            "pwd": "newpass",
+            "disabled": true
+        })))
         .create_async()
         .await;
 
     let resp = client
         .sharing()
-        .update(&Sharing {
-            id: Some("share-001".into()),
-            path: Some("/shared/docs".into()),
-            url: None,
-            password: Some("newpass".into()),
-            expiration: Some("2025-12-31T23:59:59Z".into()),
-            created_at: None,
-            disabled: Some(false),
+        .update(&UpdateSharingRequest {
+            id: "share-001".into(),
+            files: vec!["/shared/docs".into()],
+            pwd: Some("newpass".into()),
+            expires: None,
+            disabled: Some(true),
         })
         .await
         .unwrap();
 
-    assert_eq!(resp.code, 200);
+    assert_eq!(resp.data.unwrap().disabled, Some(true));
     mock.assert_async().await;
 }
 
@@ -201,6 +236,10 @@ async fn test_sharing_delete_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/share/delete")
+        .match_query(mockito::Matcher::UrlEncoded(
+            "id".into(),
+            "share-001".into(),
+        ))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
@@ -219,6 +258,10 @@ async fn test_sharing_enable_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/share/enable")
+        .match_query(mockito::Matcher::UrlEncoded(
+            "id".into(),
+            "share-001".into(),
+        ))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))
@@ -237,6 +280,10 @@ async fn test_sharing_disable_success() {
     let (mut server, client) = common::setup().await;
     let mock = server
         .mock("POST", "/api/share/disable")
+        .match_query(mockito::Matcher::UrlEncoded(
+            "id".into(),
+            "share-001".into(),
+        ))
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(common::success_json(serde_json::json!(null)))

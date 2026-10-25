@@ -1,4 +1,4 @@
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
 use crate::error::{OpenListError, Result};
 use crate::models::ApiResponse;
@@ -38,10 +38,10 @@ impl OpenListClient {
 
     pub(crate) fn auth_headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
-        if let Some(ref token) = self.token {
-            if let Ok(val) = HeaderValue::from_str(token) {
-                headers.insert(AUTHORIZATION, val);
-            }
+        if let Some(ref token) = self.token
+            && let Ok(val) = HeaderValue::from_str(token)
+        {
+            headers.insert(AUTHORIZATION, val);
         }
         headers
     }

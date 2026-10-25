@@ -34,7 +34,7 @@ impl SharingApi<'_> {
     }
 
     /// Create a new shareable link for files/folders.
-    pub async fn create(&self, req: &CreateSharingRequest) -> Result<ApiResponse<CreateSharingData>> {
+    pub async fn create(&self, req: &CreateSharingRequest) -> Result<ApiResponse<Sharing>> {
         let resp = self
             .client
             .http
@@ -47,13 +47,13 @@ impl SharingApi<'_> {
     }
 
     /// Modify existing share configuration.
-    pub async fn update(&self, sharing: &Sharing) -> Result<ApiResponse<serde_json::Value>> {
+    pub async fn update(&self, req: &UpdateSharingRequest) -> Result<ApiResponse<Sharing>> {
         let resp = self
             .client
             .http
             .post(self.client.url("/api/share/update"))
             .headers(self.client.auth_headers())
-            .json(sharing)
+            .json(req)
             .send()
             .await?;
         self.client.handle_response(resp).await
@@ -66,7 +66,7 @@ impl SharingApi<'_> {
             .http
             .post(self.client.url("/api/share/delete"))
             .headers(self.client.auth_headers())
-            .json(&serde_json::json!({ "id": id }))
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await
@@ -79,7 +79,7 @@ impl SharingApi<'_> {
             .http
             .post(self.client.url("/api/share/enable"))
             .headers(self.client.auth_headers())
-            .json(&serde_json::json!({ "id": id }))
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await
@@ -92,7 +92,7 @@ impl SharingApi<'_> {
             .http
             .post(self.client.url("/api/share/disable"))
             .headers(self.client.auth_headers())
-            .json(&serde_json::json!({ "id": id }))
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await

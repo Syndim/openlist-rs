@@ -125,6 +125,14 @@ pub enum Command {
         name: Option<String>,
     },
 
+    /// Download a remote file
+    Download {
+        remote: String,
+
+        /// Local destination (defaults to the remote file name)
+        local: Option<PathBuf>,
+    },
+
     /// Manage share links
     #[command(subcommand)]
     Share(ShareCommand),
@@ -256,6 +264,20 @@ pub enum StoragesCommand {
 
     /// Disable a storage mount
     Disable { id: i64 },
+
+    /// Create a storage mount backed by a local directory
+    StorageCreate {
+        /// Local directory to expose
+        root: PathBuf,
+
+        /// Mount path inside OpenList
+        #[arg(long, default_value = "/")]
+        mount_path: String,
+
+        /// Cache expiration in minutes
+        #[arg(long)]
+        cache_expiration: Option<i64>,
+    },
 }
 
 #[cfg(test)]

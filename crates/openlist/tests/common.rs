@@ -16,6 +16,8 @@ pub fn success_json(data: serde_json::Value) -> String {
     .to_string()
 }
 
+/// Shared by the mock-based suites; not every test binary uses it.
+#[allow(dead_code)]
 pub fn error_json(code: i32, message: &str) -> String {
     serde_json::json!({
         "code": code,

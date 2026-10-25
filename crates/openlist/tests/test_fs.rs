@@ -96,7 +96,10 @@ async fn test_fs_list_forbidden() {
         .mock("POST", "/api/fs/list")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::error_json(403, "Forbidden - insufficient permissions or wrong password"))
+        .with_body(common::error_json(
+            403,
+            "Forbidden - insufficient permissions or wrong password",
+        ))
         .create_async()
         .await;
 
@@ -208,6 +211,73 @@ async fn test_fs_get_not_found() {
     mock.assert_async().await;
 }
 
+#[tokio::test]
+async fn test_fs_download_success() {
+    let (mut server, client) = common::setup().await;
+    let raw_url = format!("{}/p/files/report.txt", server.url());
+    let get_mock = server
+        .mock("POST", "/api/fs/get")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(common::success_json(serde_json::json!({
+            "name": "report.txt",
+            "size": 12,
+            "is_dir": false,
+            "type": 4,
+            "raw_url": raw_url,
+        })))
+        .create_async()
+        .await;
+    let download_mock = server
+        .mock("GET", "/p/files/report.txt")
+        .match_header("authorization", "test-token")
+        .with_status(200)
+        .with_body("hello world!")
+        .create_async()
+        .await;
+
+    let body = client
+        .fs()
+        .download(&FsGetRequest {
+            path: "/files/report.txt".into(),
+            password: None,
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(body.as_ref(), b"hello world!");
+    get_mock.assert_async().await;
+    download_mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn test_fs_download_rejects_directories() {
+    let (mut server, client) = common::setup().await;
+    let mock = server
+        .mock("POST", "/api/fs/get")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(common::success_json(serde_json::json!({
+            "name": "docs",
+            "is_dir": true,
+            "type": 1,
+        })))
+        .create_async()
+        .await;
+
+    let err = client
+        .fs()
+        .download(&FsGetRequest {
+            path: "/docs".into(),
+            password: None,
+        })
+        .await
+        .unwrap_err();
+
+    assert!(err.to_string().contains("is a directory"));
+    mock.assert_async().await;
+}
+
 // ── Search ───────────────────────────────────────────────────────────
 
 #[tokio::test]
@@ -240,7 +310,10 @@ async fn test_fs_search_success() {
 
     let data = resp.data.unwrap();
     assert_eq!(data.total, Some(1));
-    assert_eq!(data.content.as_ref().unwrap()[0].name.as_deref(), Some("document.pdf"));
+    assert_eq!(
+        data.content.as_ref().unwrap()[0].name.as_deref(),
+        Some("document.pdf")
+    );
     mock.assert_async().await;
 }
 
@@ -371,8 +444,14 @@ async fn test_fs_batch_rename_success() {
         .batch_rename(&FsBatchRenameRequest {
             src_dir: "/folder".into(),
             rename_objects: vec![
-                RenameObject { src_name: "a.txt".into(), new_name: "b.txt".into() },
-                RenameObject { src_name: "c.txt".into(), new_name: "d.txt".into() },
+                RenameObject {
+                    src_name: "a.txt".into(),
+                    new_name: "b.txt".into(),
+                },
+                RenameObject {
+                    src_name: "c.txt".into(),
+                    new_name: "d.txt".into(),
+                },
             ],
         })
         .await
@@ -577,7 +656,10 @@ async fn test_fs_put_forbidden() {
         .await;
 
     let body = bytes::Bytes::from_static(b"data");
-    let result = client.fs().put("/restricted/file.bin", body, None, None).await;
+    let result = client
+        .fs()
+        .put("/restricted/file.bin", body, None, None)
+        .await;
     assert!(result.is_err());
     mock.assert_async().await;
 }
@@ -591,7 +673,9 @@ async fn test_fs_other_success() {
         .mock("POST", "/api/fs/other")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::success_json(serde_json::json!({"url": "https://example.com/download"})))
+        .with_body(common::success_json(
+            serde_json::json!({"url": "https://example.com/download"}),
+        ))
         .create_async()
         .await;
 
@@ -643,7 +727,10 @@ async fn test_fs_add_offline_download_not_configured() {
         .mock("POST", "/api/fs/add_offline_download")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::error_json(400, "Invalid request or offline download not configured"))
+        .with_body(common::error_json(
+            400,
+            "Invalid request or offline download not configured",
+        ))
         .create_async()
         .await;
 

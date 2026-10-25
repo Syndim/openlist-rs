@@ -176,6 +176,9 @@ pub struct FsObject {
     pub hash_info: Option<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mount_details: Option<StorageDetails>,
+    /// Direct download URL returned by `fs/get` for files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -447,17 +450,23 @@ pub struct Meta {
 
 // ── Sharing ──────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Sharing {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
+    /// Shared paths as returned by the server (`files` in the JSON payload).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<String>>,
+    /// First shared path, kept for display purposes.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Access password (`pwd` in the JSON payload).
+    #[serde(rename = "pwd", skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Expiry timestamp (`expires` in the JSON payload).
+    #[serde(rename = "expires", skip_serializing_if = "Option::is_none")]
     pub expiration: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
@@ -465,13 +474,61 @@ pub struct Sharing {
     pub disabled: Option<bool>,
 }
 
+/// Normalise a share expiration value to the RFC 3339 timestamp expected by
+/// the server.
+///
+/// `None`, an empty string and `"0"` mean "never expires". A duration such as
+/// `30m`, `12h` or `7d` is resolved against the current time. Any other value
+/// is passed through untouched so callers can supply their own timestamp.
+pub fn parse_expiration(value: &str) -> Option<String> {
+    let value = value.trim();
+    if value.is_empty() || value == "0" {
+        return None;
+    }
+
+    let (amount, unit) = value.split_at(value.len().saturating_sub(1));
+    if let Ok(amount) = amount.parse::<i64>()
+        && amount > 0
+    {
+        let seconds = match unit {
+            "s" => Some(amount),
+            "m" => Some(amount * 60),
+            "h" => Some(amount * 60 * 60),
+            "d" => Some(amount * 24 * 60 * 60),
+            _ => None,
+        };
+        if let Some(seconds) = seconds {
+            let expires = chrono::Utc::now() + chrono::Duration::seconds(seconds);
+            return Some(expires.to_rfc3339());
+        }
+    }
+
+    Some(value.to_string())
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct CreateSharingRequest {
+    /// Shared paths (`files` in the JSON payload).
+    #[serde(rename = "files")]
     pub paths: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "pwd", skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Expiry as an RFC 3339 timestamp. Use [`parse_expiration`] to convert
+    /// values such as `0` (never) or `7d`.
+    #[serde(rename = "expires", skip_serializing_if = "Option::is_none")]
     pub expiration: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateSharingRequest {
+    pub id: String,
+    pub files: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pwd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -79,7 +79,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/user/delete"))
             .headers(self.client.auth_headers())
-            .json(&IdRequest { id })
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await
@@ -92,30 +92,27 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/user/cancel_2fa"))
             .headers(self.client.auth_headers())
-            .json(&IdRequest { id })
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await
     }
 
     /// Clear cached data for a specific user.
-    pub async fn del_user_cache(&self, id: i64) -> Result<ApiResponse<serde_json::Value>> {
+    pub async fn del_user_cache(&self, username: &str) -> Result<ApiResponse<serde_json::Value>> {
         let resp = self
             .client
             .http
             .post(self.client.url("/api/admin/user/del_cache"))
             .headers(self.client.auth_headers())
-            .json(&IdRequest { id })
+            .query(&[("username", username)])
             .send()
             .await?;
         self.client.handle_response(resp).await
     }
 
     /// Get SSH keys for any user (admin).
-    pub async fn list_user_ssh_keys(
-        &self,
-        user_id: i64,
-    ) -> Result<ApiResponse<Vec<SshPublicKey>>> {
+    pub async fn list_user_ssh_keys(&self, user_id: i64) -> Result<ApiResponse<Vec<SshPublicKey>>> {
         let resp = self
             .client
             .http
@@ -137,7 +134,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/user/sshkey/delete"))
             .headers(self.client.auth_headers())
-            .json(req)
+            .query(&[("id", req.id)])
             .send()
             .await?;
         self.client.handle_response(resp).await
@@ -218,7 +215,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/storage/delete"))
             .headers(self.client.auth_headers())
-            .json(&IdRequest { id })
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await
@@ -231,7 +228,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/storage/enable"))
             .headers(self.client.auth_headers())
-            .json(&IdRequest { id })
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await
@@ -244,7 +241,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/storage/disable"))
             .headers(self.client.auth_headers())
-            .json(&IdRequest { id })
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await
@@ -443,7 +440,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/meta/delete"))
             .headers(self.client.auth_headers())
-            .json(&IdRequest { id })
+            .query(&[("id", id)])
             .send()
             .await?;
         self.client.handle_response(resp).await

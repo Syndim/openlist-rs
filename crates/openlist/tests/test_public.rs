@@ -1,7 +1,5 @@
 mod common;
 
-use openlist::models::*;
-
 // ── Public Settings ──────────────────────────────────────────────────
 
 #[tokio::test]
@@ -25,7 +23,10 @@ async fn test_public_settings_success() {
     assert_eq!(resp.code, 200);
     let settings = resp.data.unwrap();
     assert_eq!(settings.get("version").map(|s| s.as_str()), Some("3.35.0"));
-    assert_eq!(settings.get("site_title").map(|s| s.as_str()), Some("My OpenList"));
+    assert_eq!(
+        settings.get("site_title").map(|s| s.as_str()),
+        Some("My OpenList")
+    );
     mock.assert_async().await;
 }
 
@@ -38,7 +39,10 @@ async fn test_public_offline_download_tools_success() {
         .mock("GET", "/api/public/offline_download_tools")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::success_json(serde_json::json!(["aria2", "qbittorrent"])))
+        .with_body(common::success_json(serde_json::json!([
+            "aria2",
+            "qbittorrent"
+        ])))
         .create_async()
         .await;
 
@@ -76,7 +80,9 @@ async fn test_public_archive_extensions_success() {
         .mock("GET", "/api/public/archive_extensions")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::success_json(serde_json::json!(["zip", "rar", "7z", "tar", "tar.gz", "tar.bz2"])))
+        .with_body(common::success_json(serde_json::json!([
+            "zip", "rar", "7z", "tar", "tar.gz", "tar.bz2"
+        ])))
         .create_async()
         .await;
 

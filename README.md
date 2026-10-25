@@ -69,6 +69,7 @@ The repository, [Syndim/openlist-rs](https://github.com/Syndim/openlist-rs), is 
 │   └── openlist-cli/           # binary crate
 │       └── src/
 └── .github/workflows/
+    ├── integration.yml         # end-to-end CLI tests against a real server
     └── release.yml             # tag-driven release pipeline
 ```
 
@@ -150,6 +151,7 @@ Global flags may appear before or after the subcommand.
 | `openlist cp <SRC_DIR> <DST_DIR> <NAMES>...` | Copy entries |
 | `openlist rm <DIR> <NAMES>... [-y]` | Remove entries; prompts unless `-y/--yes` |
 | `openlist upload <LOCAL> <REMOTE_DIR> [--name <NAME>]` | Upload one local file |
+| `openlist download <REMOTE_PATH> [LOCAL_PATH]` | Download a remote file |
 
 #### Share links
 
@@ -157,7 +159,7 @@ Global flags may appear before or after the subcommand.
 | --- | --- |
 | `openlist share list [--page N] [--per-page N]` | List share links |
 | `openlist share get <ID>` | Show one share link |
-| `openlist share create <PATHS>... [--password P] [--expiration E]` | Create a share link (`0` expiration means never) |
+| `openlist share create <PATHS>... [--password P] [--expiration E]` | Create a share link (`0` means never, `30m`/`12h`/`7d` are relative) |
 | `openlist share update <ID> [--path P] [--password P] [--expiration E] [--disable BOOL]` | Update a share link |
 | `openlist share delete <ID>` | Delete a share link |
 | `openlist share enable <ID>` | Enable a share link |
@@ -196,8 +198,9 @@ openlist mv /downloads /archive movie.mkv
 openlist cp /archive /backup movie.mkv
 openlist rm /archive movie.mkv -y
 
-# Upload
+# Upload and download
 openlist upload ./report.pdf /docs --name report-2026.pdf
+openlist download /docs/report-2026.pdf ./report.pdf
 
 # Share links
 openlist share create /docs/report-2026.pdf --password hntr2 --expiration 0
@@ -365,7 +368,7 @@ match client.user().me().await {
 
 - **Auth**: `login`, `login_hash`, `login_ldap`, `logout`, `generate_2fa`, `verify_2fa`, `sso_login_redirect`, `sso_callback`, WebAuthn login/registration/credentials
 - **User**: `me`, `update_me`, `list_ssh_keys`, `add_ssh_key`, `delete_ssh_key`
-- **Filesystem**: `list`, `get`, `search`, `dirs`, `other`, `mkdir`, `rename`, `batch_rename`, `regex_rename`, `move_files`, `recursive_move`, `copy`, `remove`, `remove_empty_directory`, `put`, `form_upload`, `add_offline_download`, `archive_decompress`, `archive_meta`, `archive_list`
+- **Filesystem**: `list`, `get`, `download`, `search`, `dirs`, `other`, `mkdir`, `rename`, `batch_rename`, `regex_rename`, `move_files`, `recursive_move`, `copy`, `remove`, `remove_empty_directory`, `put`, `form_upload`, `add_offline_download`, `archive_decompress`, `archive_meta`, `archive_list`
 - **Admin**: user CRUD, 2FA cancellation, user cache and SSH keys; storage CRUD, enable/disable and reload; drivers; settings; metadata; index build/update/stop/clear/progress; scan start/stop/progress
 - **Public**: `settings`, `offline_download_tools`, `archive_extensions`
 - **Sharing**: `list`, `get`, `create`, `update`, `delete`, `enable`, `disable`
@@ -392,7 +395,59 @@ cargo fmt --all
 cargo clippy --workspace --all-targets
 ```
 
-The integration tests under `crates/openlist/tests` use [`mockito`](https://docs.rs/mockito) and run entirely offline.
+The tests under `crates/openlist/tests` use [`mockito`](https://docs.rs/mockito) and run entirely offline.
+
+The end-to-end suite in `crates/openlist-cli/tests/cli_integration.rs` starts a real OpenList server (one per test, in parallel) and drives the CLI through every command:
+
+| Test | Covers |
+| --- | --- |
+| `auth_login_logout_and_api_token` | `login`, `logout`, `me` |
+| `upload_list_stat_and_download` | `mkdir`, `upload` (with and without `--name`), `ls` (pagination, `--refresh`), `stat`, `download` (explicit and default destination) |
+| `rename_copy_move_and_remove` | `rename`, `cp`, `mv`, `rm` |
+| `share_links_lifecycle` | `share list/get/create/update/enable/disable/delete` |
+| `admin_users_lifecycle` | `admin users list/get/create/delete` |
+| `admin_storages_lifecycle` | `admin storages list/get/enable/disable` |
+
+Every operation runs twice: once with the cached login JWT and once with the static admin token passed via `OPENLIST_TOKEN` (the API-key path), each from an isolated config directory. It needs an OpenList server binary and is skipped when `OPENLIST_TEST_SERVER_BIN` is unset:
+
+The easiest path is [`just`](https://github.com/casey/just):
+
+```bash
+just check            # fmt --check + clippy + offline tests
+just test             # offline tests only
+just e2e              # download the latest server, run the suite, delete it again
+just integration      # end-to-end suite (keeps the downloaded server)
+just integration share_links   # a single integration test
+just server-remove    # delete the downloaded server binary
+just cli ls /         # run the CLI from source
+just server           # throw-away server on 127.0.0.1:5244 (Ctrl-C to stop)
+```
+
+The steps behind `just integration`, if you prefer to drive it yourself:
+
+```bash
+# 1. Fetch the latest server binary for your platform.
+#    Asset names: openlist-darwin-arm64.tar.gz, openlist-linux-amd64.tar.gz, ...
+#    (`just server-install` does this for you.)
+curl -fsSL -o /tmp/openlist.tar.gz \
+  "https://github.com/OpenListTeam/OpenList/releases/latest/download/openlist-darwin-arm64.tar.gz"
+mkdir -p ~/.local/bin && tar -xzf /tmp/openlist.tar.gz -C ~/.local/bin
+chmod +x ~/.local/bin/openlist
+
+# 2. Point the suite at it, either once per shell:
+export OPENLIST_TEST_SERVER_BIN="$HOME/.local/bin/openlist"
+
+# ...or persistently with direnv (.envrc is git-ignored):
+echo 'export OPENLIST_TEST_SERVER_BIN="$HOME/.local/bin/openlist"' > .envrc
+direnv allow
+
+# 3. Run the suite.
+cargo test -p openlist-cli --test cli_integration -- --nocapture
+```
+
+The tests never touch `~/.config/openlist-cli`: each server and CLI invocation runs with its own temporary `HOME`/`XDG_CONFIG_HOME`.
+
+Set `OPENLIST_TEST_KEEP_TEMP=1` to keep the temporary server directory and logs when the test fails. The [Integration workflow](.github/workflows/integration.yml) runs this test on every push and pull request.
 
 ## Release process
 

@@ -40,4 +40,3 @@ pub mod models;
 
 pub use client::OpenListClient;
 pub use error::{OpenListError, Result};
-

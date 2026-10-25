@@ -1,0 +1,54 @@
+name: Integration
+
+# End-to-end tests that start a real OpenList server and drive the CLI through
+# upload, list and download operations. The server binary is always taken from
+# the latest upstream release so API drift is caught without pinning a version.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cli:
+    name: CLI integration tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Download latest OpenList server
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/openlist-server"
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/openlist.tar.gz" \
+            "https://github.com/OpenListTeam/OpenList/releases/latest/download/openlist-linux-amd64.tar.gz"
+          tar -xzf "${RUNNER_TEMP}/openlist.tar.gz" -C "${RUNNER_TEMP}/openlist-server"
+          chmod +x "${RUNNER_TEMP}/openlist-server/openlist"
+          echo "OPENLIST_TEST_SERVER_BIN=${RUNNER_TEMP}/openlist-server/openlist" >> "${GITHUB_ENV}"
+          "${RUNNER_TEMP}/openlist-server/openlist" version
+
+      - name: Run CLI integration tests
+        env:
+          OPENLIST_TEST_KEEP_TEMP: "1"
+        run: cargo test --locked -p openlist-cli --test cli_integration -- --nocapture
+
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: openlist-server-logs
+          path: /tmp/openlist-rs-integration-*
+          if-no-files-found: ignore
+          retention-days: 7

@@ -81,6 +81,7 @@ pub async fn run(cli: Cli) -> Result<()> {
             remote_dir,
             name,
         } => fs::upload(&client, local, remote_dir, name, json).await,
+        Command::Download { remote, local } => fs::download(&client, remote, local, json).await,
 
         Command::Share(command) => share::run(&client, command, json).await,
         Command::Admin(command) => admin::run(&client, command, json).await,

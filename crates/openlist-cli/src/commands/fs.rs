@@ -262,6 +262,66 @@ pub async fn upload(
     Ok(())
 }
 
+pub async fn download(
+    client: &OpenListClient,
+    remote: String,
+    local: Option<PathBuf>,
+    json: bool,
+) -> Result<()> {
+    let remote_name = remote
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .filter(|name| !name.is_empty())
+        .with_context(|| format!("cannot determine a file name from {remote}"))?;
+
+    let local = match local {
+        Some(path) if path.is_dir() => path.join(remote_name),
+        Some(path) => path,
+        None => PathBuf::from(remote_name),
+    };
+
+    if let Some(parent) = local.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+
+    let mut file = tokio::fs::File::create(&local)
+        .await
+        .with_context(|| format!("failed to create {}", local.display()))?;
+    let size = client
+        .fs()
+        .download_to(
+            &FsGetRequest {
+                path: remote.clone(),
+                password: None,
+            },
+            &mut file,
+        )
+        .await?;
+    drop(file);
+
+    if json {
+        return output::emit_json(&serde_json::json!({
+            "message": "success",
+            "remote": remote,
+            "local": local,
+            "size": size,
+        }));
+    }
+
+    println!(
+        "Downloaded {} -> {} ({} bytes)",
+        remote,
+        local.display(),
+        size
+    );
+    Ok(())
+}
+
 fn emit(resp: openlist::models::ApiResponse<serde_json::Value>, json: bool) -> Result<()> {
     if json {
         output::emit_json(&resp)

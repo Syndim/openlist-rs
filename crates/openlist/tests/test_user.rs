@@ -85,7 +85,10 @@ async fn test_update_me_wrong_old_password() {
         .mock("POST", "/api/me/update")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(common::error_json(400, "Invalid request or wrong old password"))
+        .with_body(common::error_json(
+            400,
+            "Invalid request or wrong old password",
+        ))
         .create_async()
         .await;
 
