@@ -121,7 +121,9 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           archive="${BIN_NAME}-${GITHUB_REF_NAME}-${TARGET}.tar.gz"
-          tar -czf "dist/${archive}" -C "target/${TARGET}/release" "${BIN_NAME}"
+          # AGPL-3.0 requires conveying the licence with the binary.
+          tar -czf "dist/${archive}" -C "target/${TARGET}/release" "${BIN_NAME}" \
+            -C "${GITHUB_WORKSPACE}" LICENSE
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -130,7 +132,7 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path "target/$env:TARGET/release/$env:BIN_NAME.exe" `
+          Compress-Archive -Path "target/$env:TARGET/release/$env:BIN_NAME.exe", "LICENSE" `
             -DestinationPath "dist/$env:BIN_NAME-$env:GITHUB_REF_NAME-$env:TARGET.zip"
 
       - uses: actions/upload-artifact@v7
