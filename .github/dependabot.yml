@@ -1,0 +1,32 @@
+version: 2
+
+# Dependency updates for the Cargo workspace and the workflows in this folder.
+# Merging dependency PRs back to back can leave Cargo.lock inconsistent, because
+# each PR was resolved against an older master. Update a stale branch (comment
+# `@dependabot rebase`, or use the Update branch button) before merging; the
+# required status checks enforce that the branch is up to date.
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      cargo-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
