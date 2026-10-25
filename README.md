@@ -151,8 +151,21 @@ Global flags may appear before or after the subcommand.
 | `openlist mv <SRC_DIR> <DST_DIR> <NAMES>...` | Move entries |
 | `openlist cp <SRC_DIR> <DST_DIR> <NAMES>...` | Copy entries |
 | `openlist rm <DIR> <NAMES>... [-y]` | Remove entries; prompts unless `-y/--yes` |
-| `openlist upload <LOCAL> <REMOTE_DIR> [--name <NAME>]` | Upload one local file |
+| `openlist upload <LOCAL> <REMOTE_DIR> [--name <NAME>] [--as-task] [--wait] [--timeout SECONDS]` | Upload one local file; `--as-task` returns after the server spools the body, `--wait` polls the resulting task and exits non-zero if it fails |
 | `openlist download <REMOTE_PATH> [LOCAL_PATH]` | Download a remote file |
+
+#### Tasks
+
+Every `--kind` below accepts `upload` (default), `copy`, `move`, `offline_download`, `offline_download_transfer`, `decompress` or `decompress_upload`.
+
+| Command | Description |
+| --- | --- |
+| `openlist task list [--kind KIND]` | List unfinished tasks (pending, running, retrying) |
+| `openlist task done [--kind KIND]` | List finished tasks |
+| `openlist task info <ID> [--kind KIND]` | Show one task: state, progress, size, error |
+| `openlist task wait <ID> [--kind KIND] [--timeout SECONDS]` | Poll until the task finishes; exits non-zero when it failed or was canceled |
+| `openlist task cancel <ID> [--kind KIND]` | Cancel a task |
+| `openlist task retry <ID> [--kind KIND]` | Retry a failed task |
 
 #### Share links
 
@@ -201,6 +214,15 @@ openlist rm /archive movie.mkv -y
 
 # Upload and download
 openlist upload ./report.pdf /docs --name report-2026.pdf
+# A storage slower than the reverse-proxy timeout: let the server queue it
+# A storage slower than the reverse-proxy timeout: let the server queue it,
+# print the task id, and poll it to completion in the same run
+openlist upload ./release.apk /packages --wait --timeout 1800
+
+# ...or queue it and follow up in a later step
+openlist upload ./release.apk /packages --as-task
+openlist task info <task-id>
+openlist task wait <task-id> --timeout 1800
 openlist download /docs/report-2026.pdf ./report.pdf
 
 # Share links
@@ -356,6 +378,7 @@ Every API group is reached from the client:
 | `client.admin()` | Users, storage mounts, drivers, settings, metadata, index and scan |
 | `client.public()` | Public settings, offline-download tools, archive extensions |
 | `client.sharing()` | Share-link CRUD and enable/disable |
+| `client.task()` | Background tasks: `undone`, `done`, `info`, `cancel`, `retry` |
 
 ### Error handling
 
@@ -373,10 +396,24 @@ match client.user().me().await {
 }
 ```
 
+When a reverse proxy, CDN or gateway answers instead of OpenList, the body is
+not JSON. Those failures are reported as `OpenListError::NonJsonResponse` with
+the HTTP status, content type and a body preview, for example:
+
+```
+HTTP 504 (text/plain; charset=UTF-8), body was not the OpenList JSON API response: error code: 504; the request did not get an answer from OpenList (gateway or origin timeout)
+```
+
+A `504`/`524` after roughly a minute means the proxy gave up waiting for the
+storage write: the request reached OpenList, but the mounted storage did not
+answer. `upload --as-task` sidesteps that timeout by returning as soon as the
+server has spooled the body.
+
 ### API coverage
 
 - **Auth**: `login`, `login_hash`, `login_ldap`, `logout`, `generate_2fa`, `verify_2fa`, `sso_login_redirect`, `sso_callback`, WebAuthn login/registration/credentials
 - **User**: `me`, `update_me`, `list_ssh_keys`, `add_ssh_key`, `delete_ssh_key`
+- **Tasks**: `undone`, `done`, `info`, `cancel`, `retry` for the upload, copy, move, offline-download, transfer and decompress task managers
 - **Filesystem**: `list`, `get`, `download`, `search`, `dirs`, `other`, `mkdir`, `rename`, `batch_rename`, `regex_rename`, `move_files`, `recursive_move`, `copy`, `remove`, `remove_empty_directory`, `put`, `form_upload`, `add_offline_download`, `archive_decompress`, `archive_meta`, `archive_list`
 - **Admin**: user CRUD, 2FA cancellation, user cache and SSH keys; storage CRUD, enable/disable and reload; drivers; settings; metadata; index build/update/stop/clear/progress; scan start/stop/progress
 - **Public**: `settings`, `offline_download_tools`, `archive_extensions`

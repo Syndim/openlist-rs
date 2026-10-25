@@ -8,6 +8,7 @@ mod admin;
 mod auth;
 mod fs;
 mod share;
+mod task;
 
 pub async fn run(cli: Cli) -> Result<()> {
     let Cli {
@@ -82,8 +83,26 @@ pub async fn run(cli: Cli) -> Result<()> {
             local,
             remote_dir,
             name,
-        } => fs::upload(&client, local, remote_dir, name, json).await,
+            as_task,
+            wait,
+            timeout,
+        } => {
+            fs::upload(
+                &client,
+                local,
+                remote_dir,
+                fs::UploadOptions {
+                    name,
+                    as_task,
+                    wait,
+                    timeout,
+                    json,
+                },
+            )
+            .await
+        }
         Command::Download { remote, local } => fs::download(&client, remote, local, json).await,
+        Command::Task(command) => task::run(&client, command, json).await,
 
         Command::Share(command) => share::run(&client, command, json).await,
         Command::Admin(command) => admin::run(&client, command, json).await,

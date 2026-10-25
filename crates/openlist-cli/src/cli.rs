@@ -127,6 +127,20 @@ pub enum Command {
         /// Remote file name (defaults to the local file name)
         #[arg(long)]
         name: Option<String>,
+
+        /// Upload as a background task: the server spools the body and answers
+        /// immediately, so a slow storage cannot exceed a proxy timeout
+        #[arg(long)]
+        as_task: bool,
+
+        /// Queue the upload as a background task and wait for it to finish;
+        /// implies --as-task
+        #[arg(long)]
+        wait: bool,
+
+        /// Seconds to wait for the task when --wait is used
+        #[arg(long, default_value_t = 600, value_name = "SECONDS")]
+        timeout: u64,
     },
 
     /// Download a remote file
@@ -137,6 +151,10 @@ pub enum Command {
         local: Option<PathBuf>,
     },
 
+    /// Inspect and manage background tasks
+    #[command(subcommand)]
+    Task(TaskCommand),
+
     /// Manage share links
     #[command(subcommand)]
     Share(ShareCommand),
@@ -144,6 +162,56 @@ pub enum Command {
     /// Administrative operations
     #[command(subcommand)]
     Admin(AdminCommand),
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TaskCommand {
+    /// List unfinished tasks
+    List {
+        #[arg(long, value_name = "KIND", default_value = "upload")]
+        kind: String,
+    },
+
+    /// List finished tasks
+    Done {
+        #[arg(long, value_name = "KIND", default_value = "upload")]
+        kind: String,
+    },
+
+    /// Show one task by id
+    Info {
+        id: String,
+
+        #[arg(long, value_name = "KIND", default_value = "upload")]
+        kind: String,
+    },
+
+    /// Wait until a task finishes; exits non-zero when it failed
+    Wait {
+        id: String,
+
+        #[arg(long, value_name = "KIND", default_value = "upload")]
+        kind: String,
+
+        #[arg(long, default_value_t = 600, value_name = "SECONDS")]
+        timeout: u64,
+    },
+
+    /// Cancel a task
+    Cancel {
+        id: String,
+
+        #[arg(long, value_name = "KIND", default_value = "upload")]
+        kind: String,
+    },
+
+    /// Retry a failed task
+    Retry {
+        id: String,
+
+        #[arg(long, value_name = "KIND", default_value = "upload")]
+        kind: String,
+    },
 }
 
 #[derive(Debug, Subcommand)]

@@ -161,3 +161,123 @@ async fn verbose_logging_is_silent_without_the_flag() {
 
     mock.assert_async().await;
 }
+
+#[tokio::test]
+async fn non_json_gateway_answer_is_reported_with_status_and_body() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("POST", "/api/fs/list")
+        .with_status(504)
+        .with_header("content-type", "text/plain; charset=UTF-8")
+        .with_body("error code: 504")
+        .create_async()
+        .await;
+
+    let url = server.url();
+    let output = run(&["--server", &url, "--token", "client-secret", "ls", "/"]);
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("HTTP 504"), "missing status:\n{stderr}");
+    assert!(
+        stderr.contains("error code: 504"),
+        "missing response body:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("gateway or origin timeout"),
+        "missing hop hint:\n{stderr}"
+    );
+
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn upload_as_task_requests_a_background_task() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("PUT", "/api/fs/put")
+        .match_header("as-task", "true")
+        .match_header("file-path", "/docs/report.txt")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(r#"{"code":200,"message":"success","data":{"task":{"id":"abc123"}}}"#)
+        .create_async()
+        .await;
+
+    let home = TempHome::new();
+    let local = home.0.join("report.txt");
+    fs::write(&local, b"report body\n").expect("failed to write fixture");
+
+    let url = server.url();
+    let output = cli()
+        .args([
+            "--server",
+            &url,
+            "--token",
+            "client-secret",
+            "upload",
+            local.to_str().expect("non-UTF-8 fixture path"),
+            "/docs",
+            "--as-task",
+        ])
+        .env("HOME", &home.0)
+        .env("XDG_CONFIG_HOME", home.0.join(".config"))
+        .env("APPDATA", &home.0)
+        .output()
+        .expect("failed to run openlist");
+
+    assert!(
+        output.status.success(),
+        "openlist failed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Queued upload"),
+        "missing as-task messaging:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("task abc123"),
+        "task id was not reported:\n{stdout}"
+    );
+
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn task_info_queries_the_task_id() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("POST", "/api/task/upload/info")
+        .match_query(mockito::Matcher::UrlEncoded("tid".into(), "abc123".into()))
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            r#"{"code":200,"message":"success","data":{"id":"abc123","name":"upload report.txt to [/docs](/tianyi/docs)","state":2,"status":"done","progress":100,"total_bytes":2048,"error":""}}"#,
+        )
+        .create_async()
+        .await;
+
+    let url = server.url();
+    let output = run(&[
+        "--server",
+        &url,
+        "--token",
+        "client-secret",
+        "task",
+        "info",
+        "abc123",
+    ]);
+
+    assert!(
+        output.status.success(),
+        "openlist failed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("abc123"), "missing task id:\n{stdout}");
+    assert!(stdout.contains("succeeded"), "missing state:\n{stdout}");
+    assert!(stdout.contains("100%"), "missing progress:\n{stdout}");
+
+    mock.assert_async().await;
+}

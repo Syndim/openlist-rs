@@ -231,13 +231,27 @@ pub async fn search(
     Ok(())
 }
 
+pub struct UploadOptions {
+    pub name: Option<String>,
+    pub as_task: bool,
+    pub wait: bool,
+    pub timeout: u64,
+    pub json: bool,
+}
+
 pub async fn upload(
     client: &OpenListClient,
     local: PathBuf,
     remote_dir: String,
-    name: Option<String>,
-    json: bool,
+    options: UploadOptions,
 ) -> Result<()> {
+    let UploadOptions {
+        name,
+        as_task,
+        wait,
+        timeout,
+        json,
+    } = options;
     let file_name = match name {
         Some(name) => name,
         None => local
@@ -252,13 +266,51 @@ pub async fn upload(
         .await
         .with_context(|| format!("failed to read {}", local.display()))?;
 
-    let resp = client.fs().put(&dest, body.into(), None, None).await?;
+    let resp = client
+        .fs()
+        .put(&dest, body.into(), (as_task || wait).then_some(true), None)
+        .await
+        .with_context(|| format!("failed to upload {} to {dest}", local.display()))?;
+
+    let task_id = resp
+        .data
+        .as_ref()
+        .and_then(|data| data.get("task"))
+        .and_then(|task| task.get("id"))
+        .and_then(|id| id.as_str())
+        .map(str::to_string);
+
+    if wait {
+        let id = task_id.context("the server queued the upload without returning a task id")?;
+        let task = crate::commands::task::wait_for(client, "upload", &id, timeout).await?;
+        if !task.is_success() {
+            return Err(anyhow::anyhow!(
+                "upload task {id} {}",
+                crate::commands::task::describe_failure(&task)
+            ));
+        }
+        if json {
+            return output::emit_json(&task);
+        }
+        println!("Uploaded {} -> {dest} (task {id})", local.display());
+        return Ok(());
+    }
+
     if json {
         return output::emit_json(&resp);
     }
-
-    output::emit_message(&resp)?;
-    println!("Uploaded {} -> {}", local.display(), dest);
+    if as_task {
+        match task_id {
+            Some(id) => println!("Queued upload of {} -> {dest} (task {id})", local.display()),
+            None => {
+                output::emit_message(&resp)?;
+                println!("Queued upload of {} -> {dest}", local.display());
+            }
+        }
+    } else {
+        output::emit_message(&resp)?;
+        println!("Uploaded {} -> {}", local.display(), dest);
+    }
     Ok(())
 }
 
@@ -355,7 +407,7 @@ fn join_remote(dir: &str, name: &str) -> String {
     }
 }
 
-fn human_size(size: Option<i64>) -> String {
+pub(crate) fn human_size(size: Option<i64>) -> String {
     let Some(bytes) = size else {
         return String::new();
     };
