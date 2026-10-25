@@ -5,6 +5,7 @@ resolver = "3"
 [workspace.package]
 version = "0.4.1"
 edition = "2024"
+rust-version = "1.88"
 license = "AGPL-3.0"
 repository = "https://github.com/Syndim/openlist-rs"
 
