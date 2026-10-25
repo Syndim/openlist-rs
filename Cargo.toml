@@ -3,7 +3,7 @@ members = ["crates/openlist", "crates/openlist-cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 license = "AGPL-3.0"
 repository = "https://github.com/Syndim/openlist-rs"
@@ -12,7 +12,7 @@ repository = "https://github.com/Syndim/openlist-rs"
 # The version is required for `cargo publish`: openlist-cli depends on the
 # published openlist crate, not on this path. Keep it in sync with
 # [workspace.package] version (the release workflow verifies this).
-openlist = { path = "crates/openlist", version = "0.4.0" }
+openlist = { path = "crates/openlist", version = "0.4.1" }
 anyhow = "1"
 clap = { version = "4.5", features = ["derive", "env"] }
 dirs = "6"
