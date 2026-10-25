@@ -27,6 +27,34 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  lint:
+    name: Formatting and lints
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  msrv:
+    name: MSRV (1.88)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      # Keep in sync with rust-version in the workspace manifest and the
+      # Requirements section of the README.
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo check on the minimum supported Rust version
+        run: cargo check --workspace --all-targets --locked
+
   cli:
     name: CLI integration tests
     runs-on: ubuntu-22.04

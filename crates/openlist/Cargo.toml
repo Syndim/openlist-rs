@@ -2,10 +2,13 @@
 name = "openlist"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 description = "Rust SDK for the OpenList API"
 license.workspace = true
 repository.workspace = true
 readme = "../../README.md"
+keywords = ["openlist", "api-client", "sdk", "async", "storage"]
+categories = ["api-bindings", "asynchronous"]
 
 [dependencies]
 reqwest = { version = "0.13", features = ["json", "multipart", "query"] }

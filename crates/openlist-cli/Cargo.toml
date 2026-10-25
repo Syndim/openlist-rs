@@ -2,10 +2,13 @@
 name = "openlist-cli"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 description = "Command-line interface for the OpenList API"
 license.workspace = true
 repository.workspace = true
 readme = "../../README.md"
+keywords = ["openlist", "cli", "cloud-storage", "file-manager"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "openlist"
