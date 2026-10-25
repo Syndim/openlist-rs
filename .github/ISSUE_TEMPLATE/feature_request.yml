@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest an endpoint, command or behaviour that is missing
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This client tracks the upstream OpenList HTTP API. Requests for the
+        server itself belong in the
+        [OpenList repository](https://github.com/OpenListTeam/OpenList/issues).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task, not just the API you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or command
+      description: If you have a shape in mind, sketch the signature or CLI invocation.
+      render: rust
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream endpoint
+      description: Link to the OpenList API docs or the server source for the endpoint involved.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - openlist (the SDK crate)
+        - openlist-cli (the `openlist` binary)
+        - Both
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked the README and existing issues first.
+          required: true

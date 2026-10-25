@@ -1,0 +1,75 @@
+name: Bug report
+description: Something in the SDK or CLI does not behave as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please fill in the fields below — a minimal
+        reproduction is worth more than a long description.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - openlist-cli (the `openlist` binary)
+        - openlist (the SDK crate)
+        - Build / packaging / release artifact
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `openlist --version`, or the `openlist` crate version.
+      placeholder: "openlist 0.4.1"
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: OpenList server version
+      description: From `openlist version` on the server, or the release tag you run.
+      placeholder: "v4.1.0"
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "macOS 15.1 aarch64 / Windows 11 x86_64 / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. openlist auth login --server http://localhost:5244
+        2. openlist fs list /
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Paste the command output or error. Add `-v` output if available.
+      render: shell
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: This is not a security vulnerability (those go through a private advisory, see SECURITY.md).
+          required: true
