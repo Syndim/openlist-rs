@@ -9,7 +9,10 @@ A typed, async Rust client for the [OpenList](https://github.com/OpenListTeam/Op
 > here, and problems with the server itself upstream.
 
 [![Release](https://github.com/Syndim/openlist-rs/actions/workflows/release.yml/badge.svg)](https://github.com/Syndim/openlist-rs/actions/workflows/release.yml)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
+[![Integration](https://github.com/Syndim/openlist-rs/actions/workflows/integration.yml/badge.svg)](https://github.com/Syndim/openlist-rs/actions/workflows/integration.yml)
+[![crates.io](https://img.shields.io/crates/v/openlist-cli?label=crates.io)](https://crates.io/crates/openlist-cli)
+[![docs.rs](https://img.shields.io/docsrs/openlist?label=docs.rs)](https://docs.rs/openlist)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
 The repository, [Syndim/openlist-rs](https://github.com/Syndim/openlist-rs), is a Cargo workspace with two crates:
 
@@ -40,6 +43,7 @@ The repository, [Syndim/openlist-rs](https://github.com/Syndim/openlist-rs), is 
   - [API coverage](#api-coverage)
 - [Development](#development)
 - [Release process](#release-process)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
@@ -58,7 +62,7 @@ The repository, [Syndim/openlist-rs](https://github.com/Syndim/openlist-rs), is 
 
 ## Requirements
 
-- Rust **1.85** or newer (the workspace uses edition 2024)
+- Rust **1.88** or newer (edition 2024, and the code uses let-chains)
 - A running and reachable OpenList server
 - For library users: a Tokio runtime (the crate uses `tokio` internally)
 
@@ -87,7 +91,13 @@ The binary is named `openlist`.
 
 ### Install
 
-Prebuilt binaries for Linux, macOS and Windows are attached to each [release](https://github.com/Syndim/openlist-rs/releases). Install directly from GitHub with Cargo:
+Prebuilt binaries for Linux, macOS and Windows are attached to each [release](https://github.com/Syndim/openlist-rs/releases). The CLI is published on crates.io:
+
+```bash
+cargo install openlist-cli --locked
+```
+
+Install the latest unreleased revision directly from GitHub with Cargo:
 
 ```bash
 cargo install --git https://github.com/Syndim/openlist-rs.git --locked openlist-cli
@@ -536,8 +546,15 @@ The recipe stops when the version is not `MAJOR.MINOR.PATCH`, when `v<version>` 
 
 Tags containing a hyphen (for example `v0.4.0-rc.1`) are published as pre-releases.
 
+## Contributing
+
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
+for the build/test workflow and the pull request process. Community expectations
+are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Please report vulnerabilities
+privately as described in [SECURITY.md](SECURITY.md) rather than in an issue.
+
 ## License
 
-Licensed under the [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html) (AGPL-3.0).
+Licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
 
 Source code: <https://github.com/Syndim/openlist-rs>

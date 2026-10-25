@@ -1,0 +1,17 @@
+# Normalise line endings so Windows checkouts do not produce noisy diffs.
+* text=auto eol=lf
+
+*.rs text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+Justfile text eol=lf
+
+# Binary artifacts that must never be converted.
+*.png binary
+*.jpg binary
+*.gif binary
+*.zip binary
+*.gz binary
+*.tar binary
