@@ -932,6 +932,7 @@ dependencies = [
  "anyhow",
  "clap",
  "dirs",
+ "mockito",
  "openlist",
  "serde",
  "serde_json",

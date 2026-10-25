@@ -1,4 +1,4 @@
-use crate::client::OpenListClient;
+use crate::client::{OpenListClient, RequestBuilderExt};
 use crate::error::Result;
 use crate::models::*;
 
@@ -14,7 +14,7 @@ impl AuthApi<'_> {
             .http
             .post(self.client.url("/api/auth/login"))
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -26,7 +26,7 @@ impl AuthApi<'_> {
             .http
             .post(self.client.url("/api/auth/login/hash"))
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -38,7 +38,7 @@ impl AuthApi<'_> {
             .http
             .post(self.client.url("/api/auth/login/ldap"))
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -50,7 +50,7 @@ impl AuthApi<'_> {
             .http
             .get(self.client.url("/api/auth/logout"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -62,7 +62,7 @@ impl AuthApi<'_> {
             .http
             .post(self.client.url("/api/auth/2fa/generate"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -78,7 +78,7 @@ impl AuthApi<'_> {
             .post(self.client.url("/api/auth/2fa/verify"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -89,7 +89,7 @@ impl AuthApi<'_> {
             .client
             .http
             .get(self.client.url("/api/auth/sso"))
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -100,7 +100,7 @@ impl AuthApi<'_> {
             .client
             .http
             .get(self.client.url("/api/auth/sso_callback"))
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -111,7 +111,7 @@ impl AuthApi<'_> {
             .client
             .http
             .get(self.client.url("/api/authn/webauthn_begin_login"))
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -126,7 +126,7 @@ impl AuthApi<'_> {
             .http
             .post(self.client.url("/api/authn/webauthn_finish_login"))
             .json(body)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -138,7 +138,7 @@ impl AuthApi<'_> {
             .http
             .get(self.client.url("/api/authn/webauthn_begin_registration"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -154,7 +154,7 @@ impl AuthApi<'_> {
             .post(self.client.url("/api/authn/webauthn_finish_registration"))
             .headers(self.client.auth_headers())
             .json(body)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -170,7 +170,7 @@ impl AuthApi<'_> {
             .post(self.client.url("/api/authn/delete_authn"))
             .headers(self.client.auth_headers())
             .json(body)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -182,7 +182,7 @@ impl AuthApi<'_> {
             .http
             .get(self.client.url("/api/authn/getcredentials"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }

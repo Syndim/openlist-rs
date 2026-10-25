@@ -14,6 +14,7 @@ pub async fn run(cli: Cli) -> Result<()> {
         server,
         token,
         json,
+        verbose,
         command,
     } = cli;
 
@@ -23,6 +24,7 @@ pub async fn run(cli: Cli) -> Result<()> {
         .unwrap_or_else(|| DEFAULT_SERVER.to_string());
 
     let mut client = OpenListClient::new(server.clone());
+    client.set_verbose(verbose);
     let token = token.or_else(|| config.token.clone());
     let has_token = token.is_some();
     if let Some(token) = token {

@@ -125,6 +125,7 @@ Global flags may appear before or after the subcommand.
 | `--server <URL>` | `OPENLIST_SERVER` | `http://localhost:5244` | OpenList server base URL |
 | `--token <TOKEN>` | `OPENLIST_TOKEN` | stored token | API token; overrides the cached credential |
 | `--json` | — | off | Print the raw JSON response instead of a table |
+| `-v, --verbose` | — | off | Print request/response details to stderr |
 | `-h, --help` | — | — | Show help |
 | `-V, --version` | — | — | Show version |
 
@@ -335,6 +336,14 @@ let client = OpenListClient::new("http://localhost:5244")
 
 let resp = client.user().me().await?;
 println!("{resp:?}");
+```
+
+Enable request/response logging for debugging:
+
+```rust
+let client = OpenListClient::new("http://localhost:5244")
+    .with_token(token)
+    .with_verbose(true);
 ```
 
 Every API group is reached from the client:

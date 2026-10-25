@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::client::OpenListClient;
+use crate::client::{OpenListClient, RequestBuilderExt};
 use crate::error::Result;
 use crate::models::*;
 
@@ -15,7 +15,7 @@ impl PublicApi<'_> {
             .client
             .http
             .get(self.client.url("/api/public/settings"))
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -26,7 +26,7 @@ impl PublicApi<'_> {
             .client
             .http
             .get(self.client.url("/api/public/offline_download_tools"))
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -37,7 +37,7 @@ impl PublicApi<'_> {
             .client
             .http
             .get(self.client.url("/api/public/archive_extensions"))
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }

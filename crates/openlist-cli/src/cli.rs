@@ -20,6 +20,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
 
+    /// Print request and response details for each API call (to stderr)
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }
@@ -310,6 +314,12 @@ mod tests {
             Command::Ls { path, .. } => assert_eq!(path.as_deref(), Some("/docs")),
             other => panic!("unexpected command: {other:?}"),
         }
+    }
+
+    #[test]
+    fn parses_verbose_flag() {
+        let cli = parse(&["openlist", "ls", "/", "-v"]);
+        assert!(cli.verbose);
     }
 
     #[test]

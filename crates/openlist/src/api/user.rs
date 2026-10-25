@@ -1,4 +1,4 @@
-use crate::client::OpenListClient;
+use crate::client::{OpenListClient, RequestBuilderExt};
 use crate::error::Result;
 use crate::models::*;
 
@@ -14,7 +14,7 @@ impl UserApi<'_> {
             .http
             .get(self.client.url("/api/me"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -30,7 +30,7 @@ impl UserApi<'_> {
             .post(self.client.url("/api/me/update"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -42,7 +42,7 @@ impl UserApi<'_> {
             .http
             .get(self.client.url("/api/me/sshkey/list"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -58,7 +58,7 @@ impl UserApi<'_> {
             .post(self.client.url("/api/me/sshkey/add"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -74,7 +74,7 @@ impl UserApi<'_> {
             .post(self.client.url("/api/me/sshkey/delete"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }

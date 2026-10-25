@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use crate::client::OpenListClient;
+use crate::client::{OpenListClient, RequestBuilderExt};
 use crate::error::{OpenListError, Result};
 use crate::models::*;
 
@@ -18,7 +18,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/list"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -31,7 +31,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/get"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -98,7 +98,7 @@ impl FsApi<'_> {
             .http
             .get(url)
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
 
         let status = resp.status();
@@ -121,7 +121,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/search"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -134,7 +134,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/dirs"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -147,7 +147,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/other"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -160,7 +160,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/mkdir"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -173,7 +173,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/rename"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -189,7 +189,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/batch_rename"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -205,7 +205,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/regex_rename"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -221,7 +221,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/move"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -237,7 +237,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/recursive_move"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -250,7 +250,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/copy"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -263,7 +263,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/remove"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -279,7 +279,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/remove_empty_directory"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -306,7 +306,7 @@ impl FsApi<'_> {
         if let Some(lm) = last_modified {
             req = req.header("Last-Modified", lm);
         }
-        let resp = req.send().await?;
+        let resp = req.send_with(self.client).await?;
         self.client.handle_response(resp).await
     }
 
@@ -326,7 +326,7 @@ impl FsApi<'_> {
             .headers(self.client.auth_headers())
             .header("path", path)
             .multipart(form)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -342,7 +342,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/add_offline_download"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -358,7 +358,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/archive/decompress"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -374,7 +374,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/archive/meta"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -390,7 +390,7 @@ impl FsApi<'_> {
             .post(self.client.url("/api/fs/archive/list"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }

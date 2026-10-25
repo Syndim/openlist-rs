@@ -1,4 +1,4 @@
-use crate::client::OpenListClient;
+use crate::client::{OpenListClient, RequestBuilderExt};
 use crate::error::Result;
 use crate::models::*;
 
@@ -26,7 +26,7 @@ impl AdminApi<'_> {
         if let Some(pp) = per_page {
             req = req.query(&[("per_page", pp)]);
         }
-        let resp = req.send().await?;
+        let resp = req.send_with(self.client).await?;
         self.client.handle_response(resp).await
     }
 
@@ -38,7 +38,7 @@ impl AdminApi<'_> {
             .get(self.client.url("/api/admin/user/get"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -54,7 +54,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/user/create"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -67,7 +67,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/user/update"))
             .headers(self.client.auth_headers())
             .json(user)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -80,7 +80,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/user/delete"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -93,7 +93,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/user/cancel_2fa"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -106,7 +106,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/user/del_cache"))
             .headers(self.client.auth_headers())
             .query(&[("username", username)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -119,7 +119,7 @@ impl AdminApi<'_> {
             .get(self.client.url("/api/admin/user/sshkey/list"))
             .headers(self.client.auth_headers())
             .query(&[("user_id", user_id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -135,7 +135,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/user/sshkey/delete"))
             .headers(self.client.auth_headers())
             .query(&[("id", req.id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -159,7 +159,7 @@ impl AdminApi<'_> {
         if let Some(pp) = per_page {
             req = req.query(&[("per_page", pp)]);
         }
-        let resp = req.send().await?;
+        let resp = req.send_with(self.client).await?;
         self.client.handle_response(resp).await
     }
 
@@ -171,7 +171,7 @@ impl AdminApi<'_> {
             .get(self.client.url("/api/admin/storage/get"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -187,7 +187,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/storage/create"))
             .headers(self.client.auth_headers())
             .json(storage)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -203,7 +203,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/storage/update"))
             .headers(self.client.auth_headers())
             .json(storage)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -216,7 +216,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/storage/delete"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -229,7 +229,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/storage/enable"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -242,7 +242,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/storage/disable"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -254,7 +254,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/storage/load_all"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -268,7 +268,7 @@ impl AdminApi<'_> {
             .http
             .get(self.client.url("/api/admin/driver/list"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -280,7 +280,7 @@ impl AdminApi<'_> {
             .http
             .get(self.client.url("/api/admin/driver/names"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -293,7 +293,7 @@ impl AdminApi<'_> {
             .get(self.client.url("/api/admin/driver/info"))
             .headers(self.client.auth_headers())
             .query(&[("driver", driver)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -307,7 +307,7 @@ impl AdminApi<'_> {
             .http
             .get(self.client.url("/api/admin/setting/list"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -320,7 +320,7 @@ impl AdminApi<'_> {
             .get(self.client.url("/api/admin/setting/get"))
             .headers(self.client.auth_headers())
             .query(&[("key", key)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -336,7 +336,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/setting/save"))
             .headers(self.client.auth_headers())
             .json(settings)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -351,7 +351,7 @@ impl AdminApi<'_> {
             .json(&DeleteSettingRequest {
                 key: key.to_string(),
             })
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -363,7 +363,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/setting/reset_token"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -375,7 +375,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/setting/default"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -389,7 +389,7 @@ impl AdminApi<'_> {
             .http
             .get(self.client.url("/api/admin/meta/list"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -402,7 +402,7 @@ impl AdminApi<'_> {
             .get(self.client.url("/api/admin/meta/get"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -415,7 +415,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/meta/create"))
             .headers(self.client.auth_headers())
             .json(meta)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -428,7 +428,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/meta/update"))
             .headers(self.client.auth_headers())
             .json(meta)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -441,7 +441,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/meta/delete"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -455,7 +455,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/index/build"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -471,7 +471,7 @@ impl AdminApi<'_> {
             .post(self.client.url("/api/admin/index/update"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -483,7 +483,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/index/stop"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -495,7 +495,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/index/clear"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -507,7 +507,7 @@ impl AdminApi<'_> {
             .http
             .get(self.client.url("/api/admin/index/progress"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -521,7 +521,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/scan/start"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -533,7 +533,7 @@ impl AdminApi<'_> {
             .http
             .post(self.client.url("/api/admin/scan/stop"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -545,7 +545,7 @@ impl AdminApi<'_> {
             .http
             .get(self.client.url("/api/admin/scan/progress"))
             .headers(self.client.auth_headers())
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }

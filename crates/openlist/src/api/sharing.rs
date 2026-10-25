@@ -1,4 +1,4 @@
-use crate::client::OpenListClient;
+use crate::client::{OpenListClient, RequestBuilderExt};
 use crate::error::Result;
 use crate::models::*;
 
@@ -15,7 +15,7 @@ impl SharingApi<'_> {
             .post(self.client.url("/api/share/list"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -28,7 +28,7 @@ impl SharingApi<'_> {
             .get(self.client.url("/api/share/get"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -41,7 +41,7 @@ impl SharingApi<'_> {
             .post(self.client.url("/api/share/create"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -54,7 +54,7 @@ impl SharingApi<'_> {
             .post(self.client.url("/api/share/update"))
             .headers(self.client.auth_headers())
             .json(req)
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -67,7 +67,7 @@ impl SharingApi<'_> {
             .post(self.client.url("/api/share/delete"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -80,7 +80,7 @@ impl SharingApi<'_> {
             .post(self.client.url("/api/share/enable"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
@@ -93,7 +93,7 @@ impl SharingApi<'_> {
             .post(self.client.url("/api/share/disable"))
             .headers(self.client.auth_headers())
             .query(&[("id", id)])
-            .send()
+            .send_with(self.client)
             .await?;
         self.client.handle_response(resp).await
     }
