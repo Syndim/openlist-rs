@@ -952,7 +952,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "openlist"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "bytes",
  "chrono",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "openlist-cli"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "clap",
