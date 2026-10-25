@@ -29,15 +29,14 @@ lint:
 test:
     cargo test --workspace --locked
 
-# Download, test and remove the latest OpenList server.
+# Download, run the full test suite and remove the latest server.
 e2e filter="": server-install integration server-remove
 
-# Integration tests against the OpenList server; pass a name to run one test.
-# Needs `just server-install` (run automatically as a dependency).
+# All tests (offline + end-to-end) exactly as CI runs them.
 integration filter="": server-install
     #!/usr/bin/env nu
     with-env { OPENLIST_TEST_SERVER_BIN: '{{ server_bin }}' } {
-        ^cargo test --locked -p openlist-cli --test cli_integration -- --nocapture {{ filter }}
+        ^cargo test --workspace --locked -- --nocapture {{ filter }}
     }
 
 # Delete the downloaded OpenList server binary (skipped while `just integration` runs).

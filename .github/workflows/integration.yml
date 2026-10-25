@@ -3,16 +3,24 @@ name: Integration
 # End-to-end tests that start a real OpenList server and drive the CLI through
 # upload, list and download operations. The server binary is always taken from
 # the latest upstream release so API drift is caught without pinning a version.
+#
+# The workflow is also reusable: the release pipeline calls it before building
+# the artifacts, so a tag is only published when these tests pass.
 on:
   push:
+    # Tag pushes are handled by the Release workflow, which calls this workflow
+    # as a job. Running here too would duplicate every release run.
+    branches:
+      - "**"
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: integration-${{ github.ref }}
+  group: integration-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -39,10 +47,12 @@ jobs:
           echo "OPENLIST_TEST_SERVER_BIN=${RUNNER_TEMP}/openlist-server/openlist" >> "${GITHUB_ENV}"
           "${RUNNER_TEMP}/openlist-server/openlist" version
 
-      - name: Run CLI integration tests
+      # Every test target: the mockito-backed SDK/CLI unit tests and the
+      # end-to-end suite, which picks up OPENLIST_TEST_SERVER_BIN from above.
+      - name: Run all tests
         env:
           OPENLIST_TEST_KEEP_TEMP: "1"
-        run: cargo test --locked -p openlist-cli --test cli_integration -- --nocapture
+        run: cargo test --workspace --locked -- --nocapture
 
       - name: Upload server logs
         if: failure()

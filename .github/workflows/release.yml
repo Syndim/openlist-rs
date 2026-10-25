@@ -1,7 +1,8 @@
 name: Release
 
-# Pushing a tag such as v0.1.0 builds the CLI for every supported platform and
-# publishes a GitHub Release containing the archives and checksums.
+# Pushing a tag such as v0.2.0 runs the full test suite (unit + end-to-end) and
+# builds the CLI for every supported platform; only a green run publishes the
+# GitHub Release with the archives and checksums.
 on:
   push:
     tags:
@@ -38,19 +39,18 @@ jobs:
             exit 1
           fi
 
-  test:
-    name: Test workspace
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --locked
+  # All tests (unit + end-to-end) run in the Integration workflow. Calling it
+  # here gates the build and publish on a green run without duplicating the
+  # job definitions.
+  integration:
+    name: Integration tests
+    uses: ./.github/workflows/integration.yml
+    permissions:
+      contents: read
 
   build:
     name: Build ${{ matrix.target }}
-    needs: [verify-version, test]
+    needs: [verify-version, integration]
     strategy:
       fail-fast: false
       matrix:

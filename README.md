@@ -69,7 +69,7 @@ The repository, [Syndim/openlist-rs](https://github.com/Syndim/openlist-rs), is 
 │   └── openlist-cli/           # binary crate
 │       └── src/
 └── .github/workflows/
-    ├── integration.yml         # end-to-end CLI tests against a real server
+    ├── integration.yml         # all tests incl. end-to-end; reused by release
     └── release.yml             # tag-driven release pipeline
 ```
 
@@ -447,15 +447,17 @@ cargo test -p openlist-cli --test cli_integration -- --nocapture
 
 The tests never touch `~/.config/openlist-cli`: each server and CLI invocation runs with its own temporary `HOME`/`XDG_CONFIG_HOME`.
 
-Set `OPENLIST_TEST_KEEP_TEMP=1` to keep the temporary server directory and logs when the test fails. The [Integration workflow](.github/workflows/integration.yml) runs this test on every push and pull request.
+Set `OPENLIST_TEST_KEEP_TEMP=1` to keep the temporary server directory and logs when the test fails.
+
+The [Integration workflow](.github/workflows/integration.yml) runs the **whole** suite — `cargo test --workspace` — with `OPENLIST_TEST_SERVER_BIN` set, so the offline tests and the end-to-end tests run together on every branch push and pull request. Tag pushes are deliberately excluded there: the Release workflow calls this workflow as a job (`workflow_call`) instead, so each release runs the tests exactly once and cannot publish unless they pass.
 
 ## Release process
 
 Pushing a tag that matches `v*` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml):
 
 1. Verifies that the tag equals `[workspace.package] version` without the leading `v`
-2. Runs `cargo test --workspace --locked`
-3. Builds `openlist` for:
+2. Runs the [Integration workflow](.github/workflows/integration.yml) as a job: `cargo test --workspace --locked`, which covers the offline tests and the end-to-end suite against a real OpenList server
+3. Builds `openlist` for (only when step 1 and 2 succeed):
    - Linux x86_64 and aarch64, both glibc and musl
    - macOS Intel and Apple Silicon
    - Windows x86_64
@@ -465,8 +467,8 @@ Download the latest binaries from the [Releases](https://github.com/Syndim/openl
 
 ```bash
 # Bump [workspace.package] version first, then:
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 Tags containing a hyphen (for example `v0.2.0-rc.1`) are published as pre-releases.
